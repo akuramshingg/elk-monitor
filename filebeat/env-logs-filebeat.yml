@@ -23,7 +23,8 @@ filebeat.prospectors:
     #- d:\docs\GG\env-logs\input\*
     #- D:\docs\GG\FD-3737 Развалился грид\server_envelope_log_last\*
     #- D:\docs\GG\FD-3737 Развалился грид\server_envelope_log\*
-    - D:\docs\GG\FD-3783 Отключение одного узла\srv_log\*
+    - D:\docs\GG\FD-3737 Развалился грид\server_gc\*
+    #- D:\docs\GG\FD-3783 Отключение одного узла\srv_log\*
 
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
