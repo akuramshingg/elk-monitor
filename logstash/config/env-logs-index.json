@@ -35,19 +35,87 @@
                     }
                 }
             ],
-            "properties": {
-                "@timestamp": { "type": "date", "include_in_all": false },
-                "@version": { "type": "keyword", "include_in_all": false },
-                "geoip": {
-                    "dynamic": true,
-                    "properties": {
-                        "ip": { "type": "ip" },
-                        "location": { "type": "geo_point" },
-                        "latitude": { "type": "half_float" },
-                        "longitude": { "type": "half_float" }
-                    }
-                }
-            }
+			"properties":{
+				"@timestamp":{"type":"date","include_in_all":false},
+				"@version":{"type":"keyword","include_in_all":false},
+				"beat":{
+					"properties":{
+						"hostname":{"type":"keyword"},
+						"name":{"type":"keyword"},
+						"version":{"type":"keyword"}
+					}
+				},
+				"cp":{
+					"properties":{
+						"fsync_time":{"type":"long"},
+						"id":{"type":"keyword"},
+						"mark_begin_time":{"type":"long"},
+						"mark_end_time":{"type":"long"},
+						"pages":{"type":"long"},
+						"pages_write_time":{"type":"long"},
+						"total_time":{"type":"long"}
+					}
+				},
+				"emitter":{"type":"keyword"},
+				"geoip":{
+					"dynamic":"true",
+					"properties":{
+						"ip":{"type":"ip"},
+						"latitude":{"type":"half_float"},
+						"location":{"type":"geo_point"},
+						"longitude":{"type":"half_float"}
+					}
+				},
+				"grid":{
+					"properties":{
+						"host":{"type":"keyword"},
+						"name":{"type":"keyword"}
+					}
+				},
+				"host":{"type":"keyword"},
+				"input_type":{"type":"keyword"},
+				"level":{"type":"keyword"},
+				"message":{"type":"text","norms":false},
+				"message_kind":{"type":"keyword"},
+				"message_type":{"type":"keyword"},
+				"offset":{"type":"long"},
+				"source":{"type":"keyword"},
+				"src":{
+					"properties":{
+						"file":{"type":"keyword"}
+					}
+				},
+				"tags":{"type":"keyword"},
+				"thread":{
+					"properties":{
+						"name":{"type":"keyword"},
+						"number":{"type":"long"},
+						"prefix":{"type":"keyword"}
+					}
+				},
+				"top":{
+					"properties":{
+						"snap":{
+							"properties":{
+								"clients":{"type":"long"},
+								"cpu_count":{"type":"long"},
+								"heap_size_gb":{"type":"float"},
+								"servers":{"type":"long"},
+								"ver":{"type":"long"}
+							}
+						}
+					}
+				},
+				"type":{"type":"keyword"},
+				"wal":{
+					"properties":{
+						"idx":{"type":"long"},
+						"len":{"type":"long"},
+						"off":{"type":"long"},
+						"segs_cleared":{"type":"long"}
+					}
+				}
+			}
         }
     }
 }
