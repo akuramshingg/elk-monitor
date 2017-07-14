@@ -20,11 +20,17 @@ filebeat.prospectors:
   # Paths that should be crawled and fetched. Glob based paths.
   paths:
     #- /var/log/*.log
-    #- d:\docs\GG\env-logs\input\*
+    #- D:\docs\GG\env-logs\input\*
     #- D:\docs\GG\FD-3737 Развалился грид\server_envelope_log_last\*
     #- D:\docs\GG\FD-3737 Развалился грид\server_envelope_log\*
-    - D:\docs\GG\FD-3737 Развалился грид\server_gc\*
+    #- D:\docs\GG\FD-3737 Развалился грид\server_gc\*
     #- D:\docs\GG\FD-3783 Отключение одного узла\srv_log\*
+    #- d:\docs\GG\FD-3852 Активация после Split-brain\eip-server\envelope\*
+    #- d:\docs\GG\FD-3852 Активация после Split-brain\eip-server\envelope_last\*
+    #- d:\docs\GG\FD-3852 Активация после Split-brain\activator-eip-server\*
+    #- d:\docs\GG\FD-3852 Активация после Split-brain\*\logs\log\envelope*.log
+    - d:\docs\GG\FD-3894 Узлы начали покидать кластер\07-12-1312\*\server\env-log\eip-server\gc_memory*
+    #- d:\docs\GG\FD-3894 Узлы начали покидать кластер\07-12-1312\*\server\env-log\eip-server\ignite.log
 
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
@@ -50,7 +56,7 @@ filebeat.prospectors:
   # for Java Stack Traces or C-Line Continuation
 
   # The regexp Pattern that has to be matched. The example pattern matches all lines starting with [
-  multiline.pattern: "^(\\d|\\[)"
+  multiline.pattern: "(?m)^\\d{2}(:|\\d{2}[-.])"
 
   # Defines if the pattern set under pattern should be negated or not. Default is false.
   multiline.negate: true

@@ -34,7 +34,7 @@ node.name: node-ein-desktop
 #
 # This defaults to the number of the host's CPU cores.
 #
-# pipeline.workers: 2
+pipeline.workers: 10
 #
 # How many workers should be used per output plugin instance
 #
@@ -42,12 +42,12 @@ node.name: node-ein-desktop
 #
 # How many events to retrieve from inputs before sending to filters+workers
 #
-# pipeline.batch.size: 125
+pipeline.batch.size: 10
 #
 # How long to wait before dispatching an undersized batch to filters+workers
 # Value is in milliseconds.
 #
-# pipeline.batch.delay: 5
+pipeline.batch.delay: 10
 #
 # Force Logstash to exit during shutdown even if there are still inflight
 # events in memory. By default, logstash will refuse to quit until all
@@ -55,7 +55,7 @@ node.name: node-ein-desktop
 #
 # WARNING: enabling this can lead to data loss during shutdown
 #
-# pipeline.unsafe_shutdown: false
+pipeline.unsafe_shutdown: true
 #
 # ------------ Pipeline Configuration Settings --------------
 #
