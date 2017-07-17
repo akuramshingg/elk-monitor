@@ -1,0 +1,13 @@
+curl -XGET 'localhost:9200/_cat/indices?v&pretty'
+
+curl -XDELETE 'localhost:9200/logstash-*?pretty'
+
+curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type: application/json' -d'
+{
+  "query": { 
+    "match": {
+      "message_kind": "gc"
+    }
+  }
+}
+'

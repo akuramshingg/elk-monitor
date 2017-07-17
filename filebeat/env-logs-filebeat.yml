@@ -65,6 +65,10 @@ filebeat.prospectors:
   # that was (not) matched before or after or as long as a pattern is not matched based on negate.
   # Note: After is the equivalent to previous and before is the equivalent to to next in Logstash
   multiline.match: after
+  
+  multiline.max_lines: 1000000
+  
+  multiline.timeout: 5m
 
 
 #================================ General =====================================
