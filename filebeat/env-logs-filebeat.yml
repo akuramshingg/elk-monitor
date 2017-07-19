@@ -27,9 +27,15 @@ filebeat.prospectors:
     #- D:\docs\GG\FD-3783 Отключение одного узла\srv_log\*
     #- d:\docs\GG\FD-3894 Узлы начали покидать кластер\07-12-1312\*\server\env-log\eip-server\gc_memory*
     #- d:\docs\GG\FD-3894 Узлы начали покидать кластер\07-12-1312\*\server\env-log\eip-server\ignite.log
-    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\eip-server\ignite.log
+    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\logs\log\*
+    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\eip-server\*
+    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\activator-eip-server\*
+    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\activator-eip-server\log\*
+    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\logs\log\gc-envelope.log.0.current
     #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\eip-server\gc_memory.log.0.current
-    - D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\10.116.206.196\logs\log\*
+    #- D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\activator-eip-server\gc_memory.log.0.current
+    - D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\logs\log\thrdump-client.log
+    - D:\docs\GG\FD-3852 Активация после Split-brain\2017.07.13\*\server\env-log\eip-server\thrdump-server.log
 
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.

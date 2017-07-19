@@ -34,7 +34,7 @@ node.name: node-ein-desktop
 #
 # This defaults to the number of the host's CPU cores.
 #
-pipeline.workers: 10
+pipeline.workers: 100
 #
 # How many workers should be used per output plugin instance
 #

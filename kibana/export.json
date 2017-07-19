@@ -26,31 +26,6 @@
     }
   },
   {
-    "_id": "3640f890-69ee-11e7-a432-f70f6f7af307",
-    "_type": "search",
-    "_source": {
-      "title": "GC pauses",
-      "description": "",
-      "hits": 0,
-      "columns": [
-        "gc.pause.type",
-        "app.pause.total_time",
-        "message",
-        "grid.host",
-        "src.file",
-        "src.order"
-      ],
-      "sort": [
-        "src.order",
-        "asc"
-      ],
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"logstash-*\",\"highlightAll\":true,\"version\":true,\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[{\"meta\":{\"negate\":false,\"index\":\"logstash-*\",\"key\":\"exists\",\"value\":\"app.pause.total_time\",\"disabled\":false,\"alias\":null},\"exists\":{\"field\":\"app.pause.total_time\"},\"$state\":{\"store\":\"appState\"}},{\"meta\":{\"negate\":false,\"index\":\"logstash-*\",\"key\":\"exists\",\"value\":\"gc.pause.type\",\"disabled\":false,\"alias\":null},\"exists\":{\"field\":\"gc.pause.type\"},\"$state\":{\"store\":\"appState\"}}]}"
-      }
-    }
-  },
-  {
     "_id": "bd6927d0-656f-11e7-b456-c523365298ec",
     "_type": "search",
     "_source": {
@@ -72,6 +47,54 @@
       "version": 1,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"index\":\"logstash-*\",\"highlightAll\":true,\"version\":true,\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[{\"meta\":{\"negate\":false,\"index\":\"logstash-*\",\"key\":\"message_kind\",\"value\":\"gc\",\"disabled\":false,\"alias\":null},\"query\":{\"match\":{\"message_kind\":{\"query\":\"gc\",\"type\":\"phrase\"}}},\"$state\":{\"store\":\"appState\"}}]}"
+      }
+    }
+  },
+  {
+    "_id": "3640f890-69ee-11e7-a432-f70f6f7af307",
+    "_type": "search",
+    "_source": {
+      "title": "GC pauses",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "gc.msg.type",
+        "app.pause.total_time",
+        "message",
+        "grid.host",
+        "src.file",
+        "src.order"
+      ],
+      "sort": [
+        "src.order",
+        "asc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"logstash-*\",\"highlightAll\":true,\"version\":true,\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[{\"meta\":{\"negate\":false,\"index\":\"logstash-*\",\"key\":\"exists\",\"value\":\"app.pause.total_time\",\"disabled\":false,\"alias\":null},\"exists\":{\"field\":\"app.pause.total_time\"},\"$state\":{\"store\":\"appState\"}},{\"meta\":{\"negate\":false,\"index\":\"logstash-*\",\"key\":\"exists\",\"value\":\"gc.pause.type\",\"disabled\":false,\"alias\":null},\"exists\":{\"field\":\"gc.pause.type\"},\"$state\":{\"store\":\"appState\"}}]}"
+      }
+    }
+  },
+  {
+    "_id": "ba8d9cb0-6bf2-11e7-bc01-9dae19379b5f",
+    "_type": "search",
+    "_source": {
+      "title": "Thread dump",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "message",
+        "grid.host",
+        "src.file",
+        "src.order"
+      ],
+      "sort": [
+        "src.order",
+        "asc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"logstash-*\",\"highlightAll\":true,\"version\":true,\"filter\":[{\"$state\":{\"store\":\"appState\"},\"meta\":{\"alias\":null,\"disabled\":false,\"index\":\"logstash-*\",\"key\":\"message_kind\",\"negate\":false,\"value\":\"td\"},\"query\":{\"match\":{\"message_kind\":{\"query\":\"td\",\"type\":\"phrase\"}}}}],\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}"
       }
     }
   },
