@@ -1,0 +1,60 @@
+# logstash.yml
+---
+- hosts: elk
+  user: root
+  vars:
+    logstash: logstash-5.5.0.rpm
+
+  tasks:
+
+  - name: Create temp dir
+    file: 
+      path=/tmp/ansible 
+      recurse=yes
+      state=directory
+
+  - name: Copy logstash package to elk
+    copy: 
+      src: files/{{ logstash }}
+      dest: /tmp/ansible/{{ logstash }}
+      force: true
+
+  - name: Install logstash
+    yum:
+      name: /tmp/ansible/{{ logstash }}
+      state: present
+
+  - name: Configure logstash - jvm.options
+    copy:
+      src: configs/logstash/jvm.options
+      dest: /etc/logstash/jvm.options
+
+  - name: Configure logstash - env-logs-index.json
+    copy:
+      src: configs/logstash/conf.d/env-logs-index.json
+      dest: /etc/logstash/conf.d/env-logs-index.json
+
+  - name: Configure logstash - create patterns direcotry
+    file:
+      path=/etc/logstash/patterns
+      state=directory
+
+  - name: Configure logstash - env-logs-patterns
+    copy:
+      src: configs/logstash/patterns/env-logs-patterns
+      dest: /etc/logstash/patterns/env-logs-patterns
+
+  - name: Configure logstash - env-logs-pipeline
+    template:
+      src=configs/logstash/conf.d/env-logs-pipeline.conf.j2
+      dest=/etc/logstash/conf.d/env-logs-pipeline.conf
+
+  - name: Restart logstash
+    service:
+      name: logstash
+      state: restarted
+
+  - name: Remove logstash distrib
+    file:
+      path=/tmp/ansible/{{ logstash }}
+      state=absent
