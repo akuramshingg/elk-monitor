@@ -1,0 +1,45 @@
+# elasticsearch.yml
+---
+- hosts: elk
+  user: root
+  vars:
+    elastic: elasticsearch-5.5.0.rpm
+
+  tasks:
+
+  - name: Create temp dir
+    file: 
+      path=/tmp/ansible 
+      recurse=yes
+      state=directory
+
+  - name: Copy elastic package to elk
+    copy: 
+      src: files/{{ elastic }}
+      dest: /tmp/ansible/{{ elastic }}
+      force: true
+
+  - name: Install elastic
+    yum:
+      name: /tmp/ansible/{{ elastic }}
+      state: present
+
+  - name: Configure elastic - elasticsearch.yml
+    template:
+      src=configs/elasticsearch/elasticsearch.yml.j2
+      dest=/etc/elasticsearch/elasticsearch.yml
+
+  - name: Configure elastic - jvm.options
+    copy:
+      src=configs/elasticsearch/jvm.options
+      dest=/etc/elasticsearch/jvm.options
+
+  - name: Restart elasticsearch
+    service:
+      name: elasticsearch
+      state: restarted
+
+  - name: Remove elasticsearch distrib
+    file:
+      path=/tmp/ansible/{{ elastic }}
+      state=absent

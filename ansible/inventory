@@ -1,0 +1,22 @@
+[test]
+localhost ansible_connection=local
+
+[grid]
+10.0.0.56 host_name=f0cent
+
+[grid:vars]
+path_ignite_logs=/var/log/gridgain/*.log
+path_gc_logs=/var/log/gridgain/gc/*.log
+
+[elk]
+192.168.43.101 host_name=elk
+
+[elk:vars]
+logstash_port=5044
+
+elastic_cluster_name=elk_cluster
+elastic_path_data=/var/lib/elasticsearch
+elastic_path_logs=/var/log/elasticsearch
+elastic_port=9200
+
+kibana_port=8080

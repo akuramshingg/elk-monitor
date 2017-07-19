@@ -1,0 +1,611 @@
+# The # character at the beginning of a line indicates a comment. Use
+# comments to describe your configuration.
+
+input {
+    beats {
+        port => "{{ logstash_port }}"
+    }
+}
+
+filter {
+
+    # Default log full message pattern (splitting to timestamp, loglevel, thread, emitter and remaining message)
+    grok {
+        patterns_dir => ["patterns"]
+        patterns_files_glob => "env-logs-patterns"
+        match => { "message" => "^%{TIMESTAMP:ts}\s*\[%{LOGLEVEL:level}\s*\]\s*(\[%{DATA:[thread][name]}\]\s*\[%{DATA:emitter}\]\s*)?(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^%{TIMESTAMP:ts}\s*\[%{LOGLEVEL:level}\s*\]\s*(\[%{DATA:emitter}\]\s*\[%{DATA:[thread][name]}\]\s*)?-\s*(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^%{TIMESTAMP:ts}\s*%{LOGLEVEL:level}\s*(%{DATA:emitter}:\d+\s*)?-\s*(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^%{TIMESTAMP:ts}\s*\[%{DATA:[thread][name]}\]\s*%{LOGLEVEL:level}\s+%{DATA:emitter}:\s*-\s*(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^(\[%{DATA:[thread][name]}\]\s*)?%{TIME:tm}\s*%{LOGLEVEL:level}\s*%{DATA:emitter}:\d+\s*-\s*(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^%{TIME:tm}\s+|-%{LOGLEVEL:level}\s+in\s+%{DATA:emitter}\s*-\s*(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^%{TIME:tm}\s*\[%{LOGLEVEL:level}\s*\]\s*\[%{DATA:emitter}\]\s*(\[T:\]\s*)?-\s*(?<message>(.|\r|\n)*)" }
+        match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
+        overwrite => [ "message" ]
+        add_field => { "message_kind" => "log" }
+        timeout_millis => 0
+        tag_on_failure => [ "message_failure" ]
+    }
+
+    # GC log full message pattern
+    if ![message_kind] {
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "message" => "^%{TIMESTAMP:ts}:\s*%{BASE10NUM:uptime:float}:\s*(?<message>(.|\r|\n)*)" }
+            overwrite => [ "message" ]
+            add_field => { "message_kind" => "gc" }
+            remove_tag => [ "message_failure" ]
+            tag_on_failure => [ "message_failure" ]
+        }
+    }
+
+    if [ts] {
+    
+        # Remember last date
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "ts" => "^(?<dt>\d{4}[-/\.]\d{2}[-/\.]\d{2})" }
+            tag_on_failure => [ "dt_failure" ]
+        }
+        ruby {
+            init => "@@source_date = {}"
+            code => "@@source_date[event.get('source')] = event.get('dt')"
+            remove_field => [ "dt" ]
+        }
+    }
+    else if [tm] {
+    
+        # Constructing timestamp from time and last date 
+        ruby {
+            code => "i = 0; dt = nil; while dt == nil && i < 10 do if i > 0 then sleep(0.01) end; dt = @@source_date[event.get('source')]; i += 1 end; if dt != nil then event.set('ts',  dt + ' ' + event.get('tm')) else event.tag('dt_nil') end"
+            remove_field => [ "tm" ]
+        }
+    }
+    
+    # Parsing log timestamp
+    if [ts] {
+        date {
+            locale => "ru"
+            match => ["ts", "YYYY-MM-dd'T'HH:mm:ss.SSSZ", "YYYY-MM-dd HH:mm:ss.SSS", "YYYY.MM.dd HH:mm:ss.SSS", "YYYY-MM-dd HH:mm:ss", "YYYY.MM.dd HH:mm:ss", "HH:mm:ss" ]
+            timezone => "Europe/Moscow"
+            target => "@timestamp"
+            remove_field => [ "ts" ]
+            tag_on_failure => [ "ts_failure" ]
+        }
+    }
+
+    # Fix log level
+    grok {
+        patterns_dir => ["patterns"]
+        patterns_files_glob => "env-logs-patterns"
+        match => { "[message]" => "^Logging at %{LOGLEVEL:level} level without checking if %{LOGLEVEL:[@metadata][level]} level is enabled: (?m)%{GREEDYDATA:message}" }
+        overwrite => [ "level", "message" ]
+        tag_on_failure => []
+    }
+    
+    # Default log level INFO
+    if ![level] {
+        mutate {
+            add_field => { "level" => "INFO" }
+        }
+    }
+
+    # Parsing default log messages
+    if [message_kind] == "log" {
+
+        # Parsing thread name to prefix, number and grid name
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "[thread][name]" => "^%{DATA:[thread][prefix]}-#%{INT:[thread][number]:int}\%%{DATA:[grid][name]}\%$" }
+            tag_on_failure => [ "thread_failure" ]
+        }
+    
+        # Try to parse grid name from message
+        if ![grid][name] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "[message]" => "Ignite.*?instance\s*name\s*[:=]\s*%{DATA:[grid][name]}([\s,\)\]]|$)" }
+                tag_on_failure => [ "grid_name_failure" ]
+            }
+        }
+        
+        # Extracting grid host from grid name
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "[grid][name]" => "^%{DATA:[grid][name]}\%%{DATA:[grid][host]}$" }
+            overwrite => [ "[grid][name]" ]
+            remove_tag => [ "grid_host_failure" ]
+            tag_on_failure => [ "grid_host_failure" ]
+        }
+
+		if ![grid][host] {
+        	# Try to parse grid host from message
+			grok {
+				patterns_dir => ["patterns"]
+				patterns_files_glob => "env-logs-patterns"
+				match => { "message" => "host\s+name:\s+%{WORD:[grid][host]}" }
+				remove_tag => [ "grid_host_failure" ]
+				tag_on_failure => [ "grid_host_failure" ]
+			}
+		}
+        
+        if [grid][host] {
+        
+            # Remember grid name
+            ruby {
+                init => "@@source_grid_host = {}"
+                code => "@@source_grid_host[event.get('source')] = event.get('[grid][host]')"
+            }
+        } else {
+        
+			# Try to restore grid name from cache
+			ruby {
+				code => "i = 0; host = nil; while host == nil && i < 10 do if i > 0 then sleep(0.01) end; host = @@source_grid_host[event.get('source')]; i += 1 end; if host != nil then event.set('[grid][host]', host) else event.tag('source_grid_host_failure') end"
+				remove_tag => [ "grid_host_failure" ]
+			}
+        }
+        
+        # Parsing specific message types
+        
+        # Grid log messages
+        if ![message_type] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Topology snapshot \[ver=%{NONNEGINT:[top][snap][ver]:int}, servers=%{NONNEGINT:[top][snap][servers]:int}, clients=%{NONNEGINT:[top][snap][clients]:int}, CPUs=%{NONNEGINT:[top][snap][cpu_count]:int}, heap=%{BASE10NUM:[top][snap][heap_size_gb]:float}GB\]" }
+                add_field => { "message_type" => "top_snap" }
+                tag_on_failure => []
+            }
+        }
+        if ![message_type] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Metrics for local node \(to disable set \'metricsLogFrequency\' to 0\)\n\s+\^-- Node \[id=%{DATA:[node][short_id]}, %{DATA:[node][name]}, uptime=%{DATA:[node][uptime]}\]\n\s+\^-- H/N/C \[hosts=%{NONNEGINT:[top][hosts]:int}, nodes=%{NONNEGINT:[top][nodes]:int}, CPUs=%{NONNEGINT:[top][cpu_count]:int}\]\n\s+\^-- CPU \[cur=%{BASE10NUM:[cpu][current]:float}\%, avg=%{BASE10NUM:[cpu][avg]:float}\%, GC=%{BASE10NUM:[cpu][gc]:float}\%\]\n\s+\^-- PageMemory \[pages=%{NONNEGINT:[mem][pages]:int}\]\n\s+\^-- Heap \[used=%{NONNEGINT:[heap][used_mb]:int}MB, free=%{BASE10NUM:[heap][free]:float}\%, comm=%{NONNEGINT:[heap][comm_mb]:int}MB\]\n\s+\^-- Non heap \[used=%{NONNEGINT:[non_heap][used_mb]:int}MB, free=%{BASE10NUM:[non_heap][free]:float}\%, comm=%{NONNEGINT:[non_heap]:int}MB\]\n\s+\^-- Public thread pool \[active=%{NONNEGINT:[thread_pool][pub][active]:int}, idle=%{NONNEGINT:[thread_pool][pub][idle]:int}, qSize=%{NONNEGINT:[thread_pool][pub][queue_size]:int}\]\n\s+\^-- System thread pool \[active=%{NONNEGINT:[thread_pool][sys][active]:int}, idle=%{NONNEGINT:[thread_pool][sys][idle]:int}, qSize=%{NONNEGINT:[thread_pool][sys][queue_size]:int}\]\n\s+\^-- Outbound messages queue \[size=%{NONNEGINT:[outbound_msg_queue][size]:int}\]" }
+                add_field => { "message_type" => "metrics" }
+                tag_on_failure => []
+            }
+        }
+        if ![message_type] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Checkpoint started \[checkpointId=%{UUID:[cp][id]}, startPtr=FileWALPointer \[idx=%{NONNEGINT:[wal][idx]:int}, fileOffset=%{NONNEGINT:[wal][off]:int}, len=%{NONNEGINT:[wal][len]:int}(, forceFlush=%{WORD:[wal][force_flush]})?\], checkpointLockWait=%{NONNEGINT:[cp][lock_wait_time]:int}ms, checkpointLockHoldTime=%{NONNEGINT:[cp][lock_hold_time]:int}ms, pages=%{NONNEGINT:[cp][pages]:int}, reason='%{WORD:[cp][reason]}'\]" }
+                add_field => { "message_type" => "cp_start" }
+                tag_on_failure => []
+            }
+        }
+        if ![message_type] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Checkpoint finished \[cpId=%{UUID:[cp][id]}, pages=%{NONNEGINT:[cp][pages]:int}, markPos=FileWALPointer \[idx=%{NONNEGINT:[wal][idx]:int}, fileOffset=%{NONNEGINT:[wal][off]:int}, len=%{NONNEGINT:[wal][len]:int}(, forceFlush=%{WORD:[wal][force_flush]})?\], walSegmentsCleared=%{NONNEGINT:[wal][segs_cleared]:int}(, walHistorySize=%{NONNEGINT:[wal][hist_size]:int})?, markBegin=%{NONNEGINT:[cp][mark_begin_time]:int}ms, pagesWrite=%{NONNEGINT:[cp][pages_write_time]:int}ms, fsync=%{NONNEGINT:[cp][fsync_time]:int}ms, markEnd=%{NONNEGINT:[cp][mark_end_time]:int}ms, total=%{NONNEGINT:[cp][total_time]:int}ms\]" }
+                add_field => { "message_type" => "cp_finish" }
+                tag_on_failure => []
+            }
+            if [message_type] == "cp_finish" and [cp][total_time] > 0 {
+                ruby {
+                    code => "event.set('[cp][throughput]', event.get('[cp][pages]') * 1000 / event.get('[cp][total_time]'))"
+                }
+            }
+        }
+    }
+    
+    # Parsing GC log messages
+    if [message_kind] == "gc" {
+        if ![message_type] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Total time for which application threads were stopped: %{BASE10NUM:[app][pause][total_time]:float} seconds, Stopping threads took: %{BASE10NUM:[app][pause][threads_time]:float} seconds" }
+                add_field => { "message_type" => "app_pause" }
+                tag_on_failure => []
+            }
+		}
+        if ![message_type] {
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^\[%{DATA:[gc][msg][type]}\s*([,\]\d]|\(%{DATA:[gc][pause][type]}\))" }
+                add_field => { "message_type" => "gc_pause" }
+                tag_on_failure => []
+            }
+            
+            if [message_type] == "gc_pause" {
+
+				grok {
+					patterns_dir => ["patterns"]
+					patterns_files_glob => "env-logs-patterns"
+					match => { "message" => "\[Eden: %{BASE10NUM:[gc][eden][used][1]:int}%{DATA:[gc][eden][used_m][1]}\(%{BASE10NUM:[gc][eden][comm][1]:int}%{DATA:[gc][eden][comm_m][1]}\)->%{BASE10NUM:[gc][eden][used][2]:int}%{DATA:[gc][eden][used_m][2]}\(%{BASE10NUM:[gc][eden][comm][2]:int}%{DATA:[gc][eden][comm_m][2]}\) Survivors: %{BASE10NUM:[gc][surv][1]:int}%{DATA:[gc][surv_m][1]}->%{BASE10NUM:[gc][surv][2]:int}%{DATA:[gc][surv_m][2]} Heap: %{BASE10NUM:[gc][heap][used][1]:int}%{DATA:[gc][heap][used_m][1]}\(%{BASE10NUM:[gc][heap][comm][1]:int}%{DATA:[gc][heap][comm_m][1]}\)->%{BASE10NUM:[gc][heap][used][2]:int}%{DATA:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{DATA:[gc][heap][comm_m][2]}\)\]" }
+					tag_on_failure => []
+				}
+
+				grok {
+					patterns_dir => ["patterns"]
+					patterns_files_glob => "env-logs-patterns"
+					match => { "message" => "\[Metaspace: %{BASE10NUM:[gc][meta][used][1]:int}%{DATA:[gc][meta][used_m][1]}->%{BASE10NUM:[gc][meta][used][2]:int}%{DATA:[gc][meta][used_m][2]}\(%{BASE10NUM:[gc][meta][comm]:int}%{DATA:[gc][meta][comm_m]}\)\]" }
+					tag_on_failure => []
+				}
+
+				grok {
+					patterns_dir => ["patterns"]
+					patterns_files_glob => "env-logs-patterns"
+					match => { "message" => "\[Times: user=%{BASE10NUM:[gc][pause][time][user]:float} sys=%{BASE10NUM:[gc][pause][time][sys]:float}, real=%{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
+					add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
+					tag_on_failure => []
+				}
+            
+                # Eden metrics
+            
+                if [gc][eden][used_m][1] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][eden][used_m][1]" ]
+                    }
+                }
+                if [gc][eden][used_m][1] == "K" {
+                    ruby {
+                        code => "event.set('[gc][eden][used][1]', event.get('[gc][eden][used][1]') * 1024)"
+                        remove_field => [ "[gc][eden][used_m][1]" ]
+                    }
+                }
+                if [gc][eden][used_m][1] == "M" {
+                    ruby {
+                        code => "event.set('[gc][eden][used][1]', event.get('[gc][eden][used][1]') * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][used_m][1]" ]
+                    }
+                }
+                if [gc][eden][used_m][1] == "G" {
+                    ruby {
+                        code => "event.set('[gc][eden][used][1]', event.get('[gc][eden][used][1]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][used_m][1]" ]
+                    }
+                }
+                
+                if [gc][eden][used_m][2] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][eden][used_m][2]" ]
+                    }
+                }
+                if [gc][eden][used_m][2] == "K" {
+                    ruby {
+                        code => "event.set('[gc][eden][used][2]', event.get('[gc][eden][used][2]') * 1024)"
+                        remove_field => [ "[gc][eden][used_m][2]" ]
+                    }
+                }
+                if [gc][eden][used_m][2] == "M" {
+                    ruby {
+                        code => "event.set('[gc][eden][used][2]', event.get('[gc][eden][used][2]') * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][used_m][2]" ]
+                    }
+                }
+                if [gc][eden][used_m][2] == "G" {
+                    ruby {
+                        code => "event.set('[gc][eden][used][2]', event.get('[gc][eden][used][2]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][used_m][2]" ]
+                    }
+                }
+                
+                if [gc][eden][comm_m][1] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][eden][comm_m][1]" ]
+                    }
+                }
+                if [gc][eden][comm_m][1] == "K" {
+                    ruby {
+                        code => "event.set('[gc][eden][comm][1]', event.get('[gc][eden][comm][1]') * 1024)"
+                        remove_field => [ "[gc][eden][comm_m][1]" ]
+                    }
+                }
+                if [gc][eden][comm_m][1] == "M" {
+                    ruby {
+                        code => "event.set('[gc][eden][comm][1]', event.get('[gc][eden][comm][1]') * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][comm_m][1]" ]
+                    }
+                }
+                if [gc][eden][comm_m][1] == "G" {
+                    ruby {
+                        code => "event.set('[gc][eden][comm][1]', event.get('[gc][eden][comm][1]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][comm_m][1]" ]
+                    }
+                }
+                
+                if [gc][eden][comm_m][2] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][eden][comm_m][2]" ]
+                    }
+                }
+                if [gc][eden][comm_m][2] == "K" {
+                    ruby {
+                        code => "event.set('[gc][eden][comm][2]', event.get('[gc][eden][comm][2]') * 1024)"
+                        remove_field => [ "[gc][eden][comm_m][2]" ]
+                    }
+                }
+                if [gc][eden][comm_m][2] == "M" {
+                    ruby {
+                        code => "event.set('[gc][eden][comm][2]', event.get('[gc][eden][comm][2]') * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][comm_m][2]" ]
+                    }
+                }
+                if [gc][eden][comm_m][2] == "G" {
+                    ruby {
+                        code => "event.set('[gc][eden][comm][2]', event.get('[gc][eden][comm][2]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][eden][comm_m][2]" ]
+                    }
+                }
+                
+                # Survivor metrics
+                
+                if [gc][surv_m][1] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][surv_m][1]" ]
+                    }
+                }
+                if [gc][surv_m][1] == "K" {
+                    ruby {
+                        code => "event.set('[gc][surv][1]', event.get('[gc][surv][1]') * 1024)"
+                        remove_field => [ "[gc][surv_m][1]" ]
+                    }
+                }
+                if [gc][surv_m][1] == "M" {
+                    ruby {
+                        code => "event.set('[gc][surv][1]', event.get('[gc][surv][1]') * 1024 * 1024)"
+                        remove_field => [ "[gc][surv_m][1]" ]
+                    }
+                }
+                if [gc][surv_m][1] == "G" {
+                    ruby {
+                        code => "event.set('[gc][surv][1]', event.get('[gc][surv][1]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][surv_m][1]" ]
+                    }
+                }
+                
+                if [gc][surv_m][2] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][surv_m][2]" ]
+                    }
+                }
+                if [gc][surv_m][2] == "K" {
+                    ruby {
+                        code => "event.set('[gc][surv][2]', event.get('[gc][surv][2]') * 1024)"
+                        remove_field => [ "[gc][surv_m][2]" ]
+                    }
+                }
+                if [gc][surv_m][2] == "M" {
+                    ruby {
+                        code => "event.set('[gc][surv][2]', event.get('[gc][surv][2]') * 1024 * 1024)"
+                        remove_field => [ "[gc][surv_m][2]" ]
+                    }
+                }
+                if [gc][surv_m][2] == "G" {
+                    ruby {
+                        code => "event.set('[gc][surv][2]', event.get('[gc][surv][2]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][surv_m][2]" ]
+                    }
+                }
+                
+                # Heap metrics
+                
+                if [gc][heap][used_m][1] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][heap][used_m][1]" ]
+                    }
+                }
+                if [gc][heap][used_m][1] == "K" {
+                    ruby {
+                        code => "event.set('[gc][heap][used][1]', event.get('[gc][heap][used][1]') * 1024)"
+                        remove_field => [ "[gc][heap][used_m][1]" ]
+                    }
+                }
+                if [gc][heap][used_m][1] == "M" {
+                    ruby {
+                        code => "event.set('[gc][heap][used][1]', event.get('[gc][heap][used][1]') * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][used_m][1]" ]
+                    }
+                }
+                if [gc][heap][used_m][1] == "G" {
+                    ruby {
+                        code => "event.set('[gc][heap][used][1]', event.get('[gc][heap][used][1]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][used_m][1]" ]
+                    }
+                }
+                
+                if [gc][heap][used_m][2] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][heap][used_m][2]" ]
+                    }
+                }
+                if [gc][heap][used_m][2] == "K" {
+                    ruby {
+                        code => "event.set('[gc][heap][used][2]', event.get('[gc][heap][used][2]') * 1024)"
+                        remove_field => [ "[gc][heap][used_m][2]" ]
+                    }
+                }
+                if [gc][heap][used_m][2] == "M" {
+                    ruby {
+                        code => "event.set('[gc][heap][used][2]', event.get('[gc][heap][used][2]') * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][used_m][2]" ]
+                    }
+                }
+                if [gc][heap][used_m][2] == "G" {
+                    ruby {
+                        code => "event.set('[gc][heap][used][2]', event.get('[gc][heap][used][2]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][used_m][2]" ]
+                    }
+                }
+                
+                if [gc][heap][comm_m][1] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][heap][comm_m][1]" ]
+                    }
+                }
+                if [gc][heap][comm_m][1] == "K" {
+                    ruby {
+                        code => "event.set('[gc][heap][comm][1]', event.get('[gc][heap][comm][1]') * 1024)"
+                        remove_field => [ "[gc][heap][comm_m][1]" ]
+                    }
+                }
+                if [gc][heap][comm_m][1] == "M" {
+                    ruby {
+                        code => "event.set('[gc][heap][comm][1]', event.get('[gc][heap][comm][1]') * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][comm_m][1]" ]
+                    }
+                }
+                if [gc][heap][comm_m][1] == "G" {
+                    ruby {
+                        code => "event.set('[gc][heap][comm][1]', event.get('[gc][heap][comm][1]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][comm_m][1]" ]
+                    }
+                }
+                
+                if [gc][heap][comm_m][2] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][heap][comm_m][2]" ]
+                    }
+                }
+                if [gc][heap][comm_m][2] == "K" {
+                    ruby {
+                        code => "event.set('[gc][heap][comm][2]', event.get('[gc][heap][comm][2]') * 1024)"
+                        remove_field => [ "[gc][heap][comm_m][2]" ]
+                    }
+                }
+                if [gc][heap][comm_m][2] == "M" {
+                    ruby {
+                        code => "event.set('[gc][heap][comm][2]', event.get('[gc][heap][comm][2]') * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][comm_m][2]" ]
+                    }
+                }
+                if [gc][heap][comm_m][2] == "G" {
+                    ruby {
+                        code => "event.set('[gc][heap][comm][2]', event.get('[gc][heap][comm][2]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][heap][comm_m][2]" ]
+                    }
+                }
+                
+                # Metaspace metrics
+                
+                if [gc][meta][used_m][1] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][meta][used_m][1]" ]
+                    }
+                }
+                if [gc][meta][used_m][1] == "K" {
+                    ruby {
+                        code => "event.set('[gc][meta][used][1]', event.get('[gc][meta][used][1]') * 1024)"
+                        remove_field => [ "[gc][meta][used_m][1]" ]
+                    }
+                }
+                if [gc][meta][used_m][1] == "M" {
+                    ruby {
+                        code => "event.set('[gc][meta][used][1]', event.get('[gc][meta][used][1]') * 1024 * 1024)"
+                        remove_field => [ "[gc][meta][used_m][1]" ]
+                    }
+                }
+                if [gc][meta][used_m][1] == "G" {
+                    ruby {
+                        code => "event.set('[gc][meta][used][1]', event.get('[gc][meta][used][1]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][meta][used_m][1]" ]
+                    }
+                }
+                
+                if [gc][meta][used_m][2] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][meta][used_m][2]" ]
+                    }
+                }
+                if [gc][meta][used_m][2] == "K" {
+                    ruby {
+                        code => "event.set('[gc][meta][used][2]', event.get('[gc][meta][used][2]') * 1024)"
+                        remove_field => [ "[gc][meta][used_m][2]" ]
+                    }
+                }
+                if [gc][meta][used_m][2] == "M" {
+                    ruby {
+                        code => "event.set('[gc][meta][used][2]', event.get('[gc][meta][used][2]') * 1024 * 1024)"
+                        remove_field => [ "[gc][meta][used_m][2]" ]
+                    }
+                }
+                if [gc][meta][used_m][2] == "G" {
+                    ruby {
+                        code => "event.set('[gc][meta][used][2]', event.get('[gc][meta][used][2]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][meta][used_m][2]" ]
+                    }
+                }
+                
+                if [gc][meta][comm_m] == "B" {
+                    mutate {
+                        remove_field => [ "[gc][meta][comm_m]" ]
+                    }
+                }
+                if [gc][meta][comm_m] == "K" {
+                    ruby {
+                        code => "event.set('[gc][meta][comm]', event.get('[gc][meta][comm]') * 1024)"
+                        remove_field => [ "[gc][meta][comm_m]" ]
+                    }
+                }
+                if [gc][meta][comm_m] == "M" {
+                    ruby {
+                        code => "event.set('[gc][meta][comm]', event.get('[gc][meta][comm]') * 1024 * 1024)"
+                        remove_field => [ "[gc][meta][comm_m]" ]
+                    }
+                }
+                if [gc][meta][comm_m] == "G" {
+                    ruby {
+                        code => "event.set('[gc][meta][comm]', event.get('[gc][meta][comm]') * 1024 * 1024 * 1024)"
+                        remove_field => [ "[gc][meta][comm_m]" ]
+                    }
+                }
+                
+            }
+        }
+    }
+        
+    # Alternatively extract grid host name from log source path
+    if ![grid][host] {
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "source" => "(?<grid.host>grid\d+)" }
+            remove_tag => [ "grid_host_failure" ]
+            tag_on_failure => [ "grid_host_failure" ]
+        }
+    }
+        
+    # Alternatively extract grid host IP from log source path
+    if ![grid][host] {
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "source" => "%{IP:[grid][host]}" }
+            remove_tag => [ "grid_host_failure" ]
+            tag_on_failure => [ "grid_host_failure" ]
+        }
+    }
+    
+    # Extract source file from log source path
+    grok {
+        patterns_dir => ["patterns"]
+        patterns_files_glob => "env-logs-patterns"
+        match => { "source" => "^.*[\\/]%{DATA:[src][file]}$" }
+        tag_on_failure => [ "src_file_failure" ]
+    }
+    
+	# Concatenate timestamp & offset for sorting
+	ruby {
+		code => "event.set('src.order', event.get('@timestamp').to_i * 10_000_000 + event.get('offset'))"
+	}
+}
+
+output {
+    elasticsearch {
+        hosts => [ "{{ hostvars[groups['elk'][0]]['inventory_hostname'] }}:{{ hostvars[groups['elk'][0]]['elastic_port'] }}" ]
+        template => "env-logs-index.json"
+        template_name => "logstash-*"
+        template_overwrite => true
+    }
+    #stdout { codec => rubydebug }
+}

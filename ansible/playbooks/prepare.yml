@@ -1,0 +1,30 @@
+# elasticsearch.yml
+---
+- hosts: elk
+  user: root
+  vars:
+    java: jre-8u131-linux-x64.rpm
+
+  tasks:
+
+  - name: Create temp dir
+    file: 
+      path=/tmp/ansible 
+      recurse=yes
+      state=directory
+
+  - name: Copy java package to grid
+    copy: 
+      src: files/{{ java }}
+      dest: /tmp/ansible/{{ java }}
+      force: true
+
+  - name: Install java
+    yum:
+      name: /tmp/ansible/{{ java }}
+      state: present
+
+  - name: Remove java distrib
+    file:
+      path=/tmp/ansible/{{ java }}
+      state=absent

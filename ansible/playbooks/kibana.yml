@@ -1,0 +1,49 @@
+# kibana.yml
+---
+- hosts: elk
+  user: root
+  vars:
+    kibana: kibana-5.5.0-x86_64.rpm
+
+  tasks:
+
+  - name: Create temp dir
+    file: 
+      path=/tmp/ansible 
+      recurse=yes
+      state=directory
+
+  - name: Copy kibana package to elk
+    copy: 
+      src: files/{{ kibana }}
+      dest: /tmp/ansible/{{ kibana }}
+      force: true
+
+  - name: Install kibana
+    yum:
+      name: /tmp/ansible/{{ kibana }}
+      state: present
+
+  - name: Configure kibana - create log dir
+    file:
+      path=/var/log/kibana
+      state=directory
+
+  - name: Configure kibana - kibana.yml
+    template:
+      src=configs/kibana/kibana.yml.j2
+      dest=/etc/kibana/kibana.yml
+
+  - name: Restart kibana
+    service:
+      name: kibana
+      state: restarted
+
+  - name: Remove kibana distrib
+    file:
+      path=/tmp/ansible/{{ kibana }}
+      state=absent
+
+  - name: Import kibana dashboards
+    debug:
+      msg: "Manage->Objects->import file from playbook/config/kibana/export.json..."

@@ -1,0 +1,40 @@
+# filebeat.yml
+---
+- hosts: grid
+  user: root
+  vars:
+    filebeat: filebeat-5.5.0-x86_64.rpm
+
+  tasks:
+
+  - name: Create temp dir
+    file: 
+      path=/tmp/ansible 
+      recurse=yes
+      state=directory
+
+  - name: Copy filebeat package to grid
+    copy: 
+      src: files/{{ filebeat }}
+      dest: /tmp/ansible/{{ filebeat }}
+      force: true
+
+  - name: Install filebeat
+    yum:
+      name: /tmp/ansible/{{ filebeat }}
+      state: present
+
+  - name: Configure filebear
+    template:
+      src=configs/filebeat/filebeat.yml.j2
+      dest=/etc/filebeat/filebeat.yml
+
+  - name: Restart filebeat
+    service:
+      name: filebeat
+      state: restarted
+
+  - name: Remove filebeat distrib
+    file:
+      path=/tmp/ansible/{{ filebeat }}
+      state=absent

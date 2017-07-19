@@ -1,0 +1,5 @@
+elasticsearch.url: "http://{{ hostvars[groups['elk'][0]]['inventory_hostname'] }}:{{ hostvars[groups['elk'][0]]['elastic_port'] }}"
+logging.dest: /var/log/kibana/kibana.log
+server.host: 0.0.0.0
+server.port: {{ kibana_port }}
+server.name: {{ host_name }}
