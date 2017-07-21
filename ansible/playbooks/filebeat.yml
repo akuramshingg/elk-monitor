@@ -24,7 +24,7 @@
       name: /tmp/ansible/{{ filebeat }}
       state: present
 
-  - name: Configure filebear
+  - name: Configure filebeat
     template:
       src=configs/filebeat/filebeat.yml.j2
       dest=/etc/filebeat/filebeat.yml
