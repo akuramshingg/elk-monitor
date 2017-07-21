@@ -5,7 +5,7 @@ filebeat.prospectors:
     - {{ path_gc_logs }}
     
   fields:
-  	grid.host: {{ host_name }}
+    grid.host: {{ host_name }}
   
   multiline.pattern: "(?m)^\\d{2}(:|\\d{2}[-.])|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
   multiline.negate: true

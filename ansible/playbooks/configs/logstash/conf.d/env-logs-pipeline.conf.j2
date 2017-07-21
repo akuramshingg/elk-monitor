@@ -44,16 +44,16 @@ filter {
 
     # Default log full message pattern (splitting to timestamp and remaining message)
     if ![message_kind] {
-		grok {
-			patterns_dir => ["patterns"]
-			patterns_files_glob => "env-logs-patterns"
-			match => { "message" => "^%{TIMESTAMP:ts}\s*(?<message>(.|\r|\n)*)" }
-			match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
-			overwrite => [ "message" ]
-			add_field => { "message_kind" => "log" }
-			timeout_millis => 0
-			tag_on_failure => [ "message_failure" ]
-		}
+        grok {
+            patterns_dir => ["patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "message" => "^%{TIMESTAMP:ts}\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
+            overwrite => [ "message" ]
+            add_field => { "message_kind" => "log" }
+            timeout_millis => 0
+            tag_on_failure => [ "message_failure" ]
+        }
     }
     
     if ![message_kind] {
@@ -85,7 +85,7 @@ filter {
             code => "@@source_ts[event.get('source')] = event.get('ts')"
         }
         mutate {
-        	update => { "message_kind" => "td" }
+            update => { "message_kind" => "td" }
         }
     }
 
@@ -99,11 +99,11 @@ filter {
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
         }
-		if [message_kind] == "td" {
-			ruby {
-				code => "ts = @@source_ts[event.get('source')]; if ts != nil then event.set('ts',  ts) else event.tag('ts_nil') end"
-			}
-		}
+        if [message_kind] == "td" {
+            ruby {
+                code => "ts = @@source_ts[event.get('source')]; if ts != nil then event.set('ts',  ts) else event.tag('ts_nil') end"
+            }
+        }
     }
 
     # Last date processing
@@ -190,16 +190,16 @@ filter {
             tag_on_failure => [ "grid_host_failure" ]
         }
 
-		if ![grid][host] {
-        	# Try to parse grid host from message
-			grok {
-				patterns_dir => ["patterns"]
-				patterns_files_glob => "env-logs-patterns"
-				match => { "message" => "host\s+name:\s+%{WORD:[grid][host]}" }
-				remove_tag => [ "grid_host_failure" ]
-				tag_on_failure => [ "grid_host_failure" ]
-			}
-		}
+        if ![grid][host] {
+            # Try to parse grid host from message
+            grok {
+                patterns_dir => ["patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "host\s+name:\s+%{WORD:[grid][host]}" }
+                remove_tag => [ "grid_host_failure" ]
+                tag_on_failure => [ "grid_host_failure" ]
+            }
+        }
         
         if [grid][host] {
         
@@ -210,15 +210,15 @@ filter {
             }
         } else {
         
-			# Try to restore grid name from cache
-			ruby {
-				code => "i = 0; host = nil; while host == nil && i < 10 do if i > 0 then sleep(0.01) end; host = @@source_grid_host[event.get('source')]; i += 1 end; if host != nil then event.set('[grid][host]', host) else event.tag('source_grid_host_failure') end"
-				remove_tag => [ "grid_host_failure" ]
-			}
+            # Try to restore grid name from cache
+            ruby {
+                code => "i = 0; host = nil; while host == nil && i < 10 do if i > 0 then sleep(0.01) end; host = @@source_grid_host[event.get('source')]; i += 1 end; if host != nil then event.set('[grid][host]', host) else event.tag('source_grid_host_failure') end"
+                remove_tag => [ "grid_host_failure" ]
+            }
         }
-	}
+    }
         
-	# Parsing default log specific message types
+    # Parsing default log specific message types
     if [message_kind] == "log" {
         
         # Grid log messages
@@ -275,7 +275,7 @@ filter {
                 add_field => { "message_type" => "app_pause" }
                 tag_on_failure => []
             }
-		}
+        }
         if ![message_type] {
             grok {
                 patterns_dir => ["patterns"]
@@ -287,35 +287,35 @@ filter {
             
             if [message_type] == "gc_pause" {
 
-				grok {
-					patterns_dir => ["patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "\[Eden: %{BASE10NUM:[gc][eden][used][1]:int}%{SIZE_M:[gc][eden][used_m][1]}\(%{BASE10NUM:[gc][eden][comm][1]:int}%{SIZE_M:[gc][eden][comm_m][1]}\)->%{BASE10NUM:[gc][eden][used][2]:int}%{SIZE_M:[gc][eden][used_m][2]}\(%{BASE10NUM:[gc][eden][comm][2]:int}%{SIZE_M:[gc][eden][comm_m][2]}\) Survivors: %{BASE10NUM:[gc][surv][1]:int}%{SIZE_M:[gc][surv_m][1]}->%{BASE10NUM:[gc][surv][2]:int}%{SIZE_M:[gc][surv_m][2]} Heap: %{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}\(%{BASE10NUM:[gc][heap][comm][1]:int}%{SIZE_M:[gc][heap][comm_m][1]}\)->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\)\]" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "\[Eden: %{BASE10NUM:[gc][eden][used][1]:int}%{SIZE_M:[gc][eden][used_m][1]}\(%{BASE10NUM:[gc][eden][comm][1]:int}%{SIZE_M:[gc][eden][comm_m][1]}\)->%{BASE10NUM:[gc][eden][used][2]:int}%{SIZE_M:[gc][eden][used_m][2]}\(%{BASE10NUM:[gc][eden][comm][2]:int}%{SIZE_M:[gc][eden][comm_m][2]}\) Survivors: %{BASE10NUM:[gc][surv][1]:int}%{SIZE_M:[gc][surv_m][1]}->%{BASE10NUM:[gc][surv][2]:int}%{SIZE_M:[gc][surv_m][2]} Heap: %{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}\(%{BASE10NUM:[gc][heap][comm][1]:int}%{SIZE_M:[gc][heap][comm_m][1]}\)->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\)\]" }
+                    tag_on_failure => []
+                }
 
-				grok {
-					patterns_dir => ["patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "\[Metaspace: %{BASE10NUM:[gc][meta][used][1]:int}%{SIZE_M:[gc][meta][used_m][1]}->%{BASE10NUM:[gc][meta][used][2]:int}%{SIZE_M:[gc][meta][used_m][2]}\(%{BASE10NUM:[gc][meta][comm]:int}%{SIZE_M:[gc][meta][comm_m]}\)\]" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "\[Metaspace: %{BASE10NUM:[gc][meta][used][1]:int}%{SIZE_M:[gc][meta][used_m][1]}->%{BASE10NUM:[gc][meta][used][2]:int}%{SIZE_M:[gc][meta][used_m][2]}\(%{BASE10NUM:[gc][meta][comm]:int}%{SIZE_M:[gc][meta][comm_m]}\)\]" }
+                    tag_on_failure => []
+                }
 
-				grok {
-					patterns_dir => ["patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "\[Times: user=%{BASE10NUM:[gc][pause][time][user]:float} sys=%{BASE10NUM:[gc][pause][time][sys]:float}, real=%{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
-					add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "\[Times: user=%{BASE10NUM:[gc][pause][time][user]:float} sys=%{BASE10NUM:[gc][pause][time][sys]:float}, real=%{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
+                    add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
+                    tag_on_failure => []
+                }
             
-				grok {
-					patterns_dir => ["patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "^\s*%{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\), %{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
-					add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "^\s*%{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\), %{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
+                    add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
+                    tag_on_failure => []
+                }
             
                 # Eden metrics
             
@@ -671,10 +671,10 @@ filter {
         tag_on_failure => [ "src_file_failure" ]
     }
     
-	# Concatenate timestamp & offset for sorting
-	ruby {
-		code => "event.set('src.order', event.get('@timestamp').to_i * 10_000_000 + event.get('offset'))"
-	}
+    # Concatenate timestamp & offset for sorting
+    ruby {
+        code => "event.set('src.order', event.get('@timestamp').to_i * 10_000_000 + event.get('offset'))"
+    }
 }
 
 output {
