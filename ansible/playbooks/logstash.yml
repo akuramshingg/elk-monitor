@@ -34,10 +34,15 @@
       src: configs/logstash/jvm.options
       dest: /etc/logstash/jvm.options
 
+  - name: Configure logstash - create templates direcotry
+    file:
+      path=/etc/logstash/templates
+      state=directory
+
   - name: Configure logstash - env-logs-index.json
     copy:
-      src: configs/logstash/conf.d/env-logs-index.json
-      dest: /etc/logstash/conf.d/env-logs-index.json
+      src: configs/logstash/templates/env-logs-index.json
+      dest: /etc/logstash/templates/env-logs-index.json
 
   - name: Configure logstash - create patterns direcotry
     file:
