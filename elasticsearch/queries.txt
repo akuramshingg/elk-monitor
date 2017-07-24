@@ -13,3 +13,13 @@ curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type
   }
 }
 '
+
+curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type: application/json' -d'
+{
+  "query": { 
+    "wildcard": {
+      "source": "*gc*"
+    }
+  }
+}
+'

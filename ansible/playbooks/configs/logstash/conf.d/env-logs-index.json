@@ -38,6 +38,7 @@
             "properties":{
                 "@timestamp":{"type":"date","include_in_all":false},
                 "@version":{"type":"keyword","include_in_all":false},
+				"app":{"properties":{"pause":{"properties":{"threads_time":{"type":"float"},"total_time":{"type":"float"}}}}}
                 "beat":{"properties":{"hostname":{"type":"keyword"},"name":{"type":"keyword"},"version":{"type":"keyword"}}},
                 "cp":{"properties":{"fsync_time":{"type":"long"},"id":{"type":"keyword"},"mark_begin_time":{"type":"long"},"mark_end_time":{"type":"long"},"pages":{"type":"long"},"pages_write_time":{"type":"long"},"total_time":{"type":"long"}}},
                 "emitter":{"type":"keyword"},

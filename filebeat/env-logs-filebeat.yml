@@ -21,7 +21,7 @@ filebeat.prospectors:
   paths:
     #- /var/log/*.log
     #- D:\docs\GG\env-logs\input\*
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*gc*
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*gc*
     - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*envelope*log
     - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*dump*log
 

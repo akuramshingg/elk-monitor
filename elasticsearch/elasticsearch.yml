@@ -20,13 +20,17 @@ indices.memory.min_index_buffer_size: 1024mb
 #
 # Use a descriptive name for your cluster:
 #
+
 cluster.name: env-logs
+
 #
 # ------------------------------------ Node ------------------------------------
 #
 # Use a descriptive name for the node:
 #
+
 node.name: node-ein-desktop
+
 #
 # Add custom attributes to the node:
 #
@@ -36,11 +40,15 @@ node.name: node-ein-desktop
 #
 # Path to directory where to store the data (separate multiple locations by comma):
 #
+
 path.data: d:\docs\GG\env-logs\data
+
 #
 # Path to log files:
 #
+
 path.logs: d:\docs\GG\env-logs\logs
+
 #
 # ----------------------------------- Memory -----------------------------------
 #
@@ -58,11 +66,15 @@ path.logs: d:\docs\GG\env-logs\logs
 #
 # Set the bind address to a specific IP (IPv4 or IPv6):
 #
+
 #network.host: 192.168.0.1
+
 #
 # Set a custom port for HTTP:
 #
+
 #http.port: 9200
+
 #
 # For more information, consult the network module documentation.
 #
