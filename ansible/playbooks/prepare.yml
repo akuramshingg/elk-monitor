@@ -13,7 +13,7 @@
       recurse=yes
       state=directory
 
-  - name: Copy java package to grid
+  - name: Copy java package to elk
     copy: 
       src: files/{{ java }}
       dest: /tmp/ansible/{{ java }}
