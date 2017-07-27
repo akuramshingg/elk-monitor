@@ -21,9 +21,7 @@ filebeat.prospectors:
   paths:
     #- /var/log/*.log
     #- D:\docs\GG\env-logs\input\*
-    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*gc*
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*envelope*log
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\*dump*log
+    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\grid457_20170725T103841\server\env-log\dstat.csv
 
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
@@ -49,7 +47,7 @@ filebeat.prospectors:
   # for Java Stack Traces or C-Line Continuation
 
   # The regexp Pattern that has to be matched. The example pattern matches all lines starting with [
-  multiline.pattern: "(?m)^\\d{2}(:|\\d{2}[-.])|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
+  multiline.pattern: "(?m)^\\d{2}([:-]\\d{2}|\\d{2}[-.])|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
 
   # Defines if the pattern set under pattern should be negated or not. Default is false.
   multiline.negate: true
