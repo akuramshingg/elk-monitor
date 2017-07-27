@@ -1,11 +1,11 @@
 filebeat.prospectors:
 - input_type: log
   paths:
-    - {{ path_ignite_logs }}
-    - {{ path_gc_logs }}
+    - {{ local_ignite_logs }}
+    - {{ local_gc_logs }}
     
   fields:
-    grid.host: {{ host_name }}
+    grid.host: {{ ansible_hostname }}
   
   multiline.pattern: "(?m)^\\d{2}(:|\\d{2}[-.])|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
   multiline.negate: true

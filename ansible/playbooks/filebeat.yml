@@ -24,6 +24,11 @@
       name: /tmp/ansible/{{ filebeat }}
       state: present
 
+  - name: Create patch variables
+    set_fact:
+      local_ignite_logs: "{{ path_ignite_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+      local_gc_logs: "{{ path_gc_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+
   - name: Configure filebeat
     template:
       src=configs/filebeat/filebeat.yml.j2

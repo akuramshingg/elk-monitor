@@ -1,15 +1,27 @@
-[test]
-localhost ansible_connection=local
-
 [grid]
-10.0.0.56 host_name=f0cent
+10.116.214.1
+10.116.214.2
+10.116.214.3
+10.116.214.4
+10.116.214.5
+10.116.214.6
+10.116.214.7
+10.116.214.8
+10.116.214.9
+10.116.214.10
+10.116.214.11
+10.116.214.12
+10.116.214.13
+10.116.214.14
+10.116.214.15
+10.116.214.16
 
 [grid:vars]
-path_ignite_logs=/var/log/gridgain/*.log
-path_gc_logs=/var/log/gridgain/gc/*.log
+path_ignite_logs=/gridgain/sas/envelope/log/HOSTNAME/union-module/log/*.log
+path_gc_logs=/gridgain/sas/envelope/log/HOSTNAME/union-module/gm_memory_union-module.0.current
 
 [elk]
-192.168.43.101 host_name=elk
+10.116.153.148 host_name=elk
 
 [elk:vars]
 logstash_port=5044
