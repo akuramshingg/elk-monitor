@@ -103,6 +103,196 @@
             }
           }
         },
+        "cpu": {
+          "properties": {
+            "avg": {
+              "type": "float"
+            },
+            "current": {
+              "type": "float"
+            },
+            "gc": {
+              "type": "float"
+            }
+          }
+        },
+        "csv": {
+          "properties": {
+            "header": {
+              "type": "object"
+            }
+          }
+        },
+        "dstat": {
+          "properties": {
+            "async": {
+              "properties": {
+                "#aio": {
+                  "type": "float"
+                }
+              }
+            },
+            "dsk/total": {
+              "properties": {
+                "read": {
+                  "type": "float"
+                },
+                "writ": {
+                  "type": "float"
+                }
+              }
+            },
+            "interrupts": {
+              "properties": {
+                "280": {
+                  "type": "float"
+                },
+                "281": {
+                  "type": "float"
+                },
+                "282": {
+                  "type": "float"
+                },
+                "283": {
+                  "type": "float"
+                },
+                "284": {
+                  "type": "float"
+                }
+              }
+            },
+            "io/total": {
+              "properties": {
+                "read": {
+                  "type": "float"
+                },
+                "writ": {
+                  "type": "float"
+                }
+              }
+            },
+            "load_avg": {
+              "properties": {
+                "15m": {
+                  "type": "float"
+                },
+                "1m": {
+                  "type": "float"
+                },
+                "5m": {
+                  "type": "float"
+                }
+              }
+            },
+            "memory_usage": {
+              "properties": {
+                "buff": {
+                  "type": "float"
+                },
+                "cach": {
+                  "type": "float"
+                },
+                "free": {
+                  "type": "float"
+                },
+                "used": {
+                  "type": "float"
+                }
+              }
+            },
+            "net/total": {
+              "properties": {
+                "recv": {
+                  "type": "float"
+                },
+                "send": {
+                  "type": "float"
+                }
+              }
+            },
+            "paging": {
+              "properties": {
+                "in": {
+                  "type": "float"
+                },
+                "out": {
+                  "type": "float"
+                }
+              }
+            },
+            "procs": {
+              "properties": {
+                "blk": {
+                  "type": "float"
+                },
+                "new": {
+                  "type": "float"
+                },
+                "run": {
+                  "type": "float"
+                }
+              }
+            },
+            "swap": {
+              "properties": {
+                "free": {
+                  "type": "float"
+                },
+                "used": {
+                  "type": "float"
+                }
+              }
+            },
+            "system": {
+              "properties": {
+                "csw": {
+                  "type": "float"
+                },
+                "int": {
+                  "type": "float"
+                }
+              }
+            },
+            "total_cpu_usage": {
+              "properties": {
+                "hiq": {
+                  "type": "float"
+                },
+                "idl": {
+                  "type": "float"
+                },
+                "siq": {
+                  "type": "float"
+                },
+                "sys": {
+                  "type": "float"
+                },
+                "usr": {
+                  "type": "float"
+                },
+                "wai": {
+                  "type": "float"
+                }
+              }
+            },
+            "virtual_memory": {
+              "properties": {
+                "alloc": {
+                  "type": "float"
+                },
+                "free": {
+                  "type": "float"
+                },
+                "majpf": {
+                  "type": "float"
+                },
+                "minpf": {
+                  "type": "float"
+                }
+              }
+            }
+          }
+        },
         "emitter": {
           "type": "keyword"
         },
@@ -287,6 +477,19 @@
             }
           }
         },
+        "heap": {
+          "properties": {
+            "comm_mb": {
+              "type": "long"
+            },
+            "free": {
+              "type": "float"
+            },
+            "used_mb": {
+              "type": "long"
+            }
+          }
+        },
         "host": {
           "type": "keyword"
         },
@@ -295,6 +498,13 @@
         },
         "level": {
           "type": "keyword"
+        },
+        "mem": {
+          "properties": {
+            "pages": {
+              "type": "long"
+            }
+          }
         },
         "message": {
           "type": "text",
@@ -306,8 +516,38 @@
         "message_type": {
           "type": "keyword"
         },
+        "node": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "short_id": {
+              "type": "keyword"
+            },
+            "uptime": {
+              "type": "keyword"
+            }
+          }
+        },
+        "non_heap": {
+          "properties": {
+            "free": {
+              "type": "float"
+            },
+            "used_mb": {
+              "type": "long"
+            }
+          }
+        },
         "offset": {
           "type": "long"
+        },
+        "outbound_msg_queue": {
+          "properties": {
+            "size": {
+              "type": "long"
+            }
+          }
         },
         "source": {
           "type": "keyword"
@@ -365,6 +605,36 @@
             }
           }
         },
+        "thread_pool": {
+          "properties": {
+            "pub": {
+              "properties": {
+                "active": {
+                  "type": "long"
+                },
+                "idle": {
+                  "type": "long"
+                },
+                "queue_size": {
+                  "type": "long"
+                }
+              }
+            },
+            "sys": {
+              "properties": {
+                "active": {
+                  "type": "long"
+                },
+                "idle": {
+                  "type": "long"
+                },
+                "queue_size": {
+                  "type": "long"
+                }
+              }
+            }
+          }
+        },
         "top": {
           "properties": {
             "snap": {
@@ -387,9 +657,6 @@
               }
             }
           }
-        },
-        "ts": {
-          "type": "keyword"
         },
         "type": {
           "type": "keyword"
