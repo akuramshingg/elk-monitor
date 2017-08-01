@@ -21,15 +21,15 @@ filebeat.prospectors:
   paths:
     #- /var/log/*.log
     #- D:\docs\GG\env-logs\input\*
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\dstat.csv
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\dstat.csv
     - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\gc_memory.log.0.current
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\thrdump-server.log
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\log\envelope.log
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\log\envelope-err.log
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\gc-envelope.log.0.current
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\thrdump-client.log
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\envelope.log
-    - D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\envelope-err.log
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\thrdump-server.log
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\log\envelope.log
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\server\env-log\eip-server\log\envelope-err.log
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\gc-envelope.log.0.current
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\thrdump-client.log
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\envelope.log
+    #- D:\docs\GG\FD-3970 Выпадение узлов с таймаутами для Split-Brain\2017-07-25\*\logs\log\envelope-err.log
 
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
@@ -103,7 +103,7 @@ filebeat.prospectors:
 #----------------------------- Logstash output --------------------------------
 output.logstash:
   # The Logstash hosts
-  hosts: ["localhost:5044"]
+  hosts: ["10.0.0.75:5044"]
 
   # Optional SSL. By default is off.
   # List of root certificates for HTTPS server verifications

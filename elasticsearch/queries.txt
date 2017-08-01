@@ -1,4 +1,4 @@
-curl -XGET 'localhost:9200/_all/_mapping'
+curl -XGET 'localhost:9200/_all/_mapping?pretty'
 
 curl -XGET 'localhost:9200/_cat/indices?v&pretty'
 
