@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration version="1.0" name="Settings for &apos;My Recording&apos;" description="These settings were used to start the recording &apos;d:\downloads\flight_recording_180112comsbtbusinessMain1000000415336.jfr&apos;." provider="Oracle">
+<configuration version="1.0" name="env_profiling" description="Envelope profiling config" provider="Oracle">
 
   <producer uri="http://www.oracle.com/hotspot/jvm/" label="Oracle JDK">
 
