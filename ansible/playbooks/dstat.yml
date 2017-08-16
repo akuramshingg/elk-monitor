@@ -1,0 +1,39 @@
+# dstat.yml
+---
+- hosts: grid
+  user: root
+  vars:
+    dstat_command: "dstat -tlpciymsgdnr --aio --vm --noheaders --noupdate --nocolor --output "
+
+  tasks:
+
+  - name: Compile log dir path
+    set_fact:
+      local_dstat_logs: "{{ path_dstat_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+
+  - name: Create log dir
+    file:
+      path={{ local_dstat_logs }}
+      recurse=yes
+      state=directory
+
+  - name: Compile filename
+    set_fact:
+      local_dstat_log_file: "{{ local_dstat_logs }}/dstat.log"
+
+  - name: Compile dstat command
+    set_fact:
+      dstat_full_command: "{{ dstat_command }}{{ local_dstat_log_file }}"
+
+  - name: Kill old dstat
+    shell: "pkill -f '{{ dstat_full_command }}' || true"
+    ignore_errors: yes
+ 
+  - name: Clear old dstat log
+    file:
+      path={{ local_dstat_log_file }}
+      state=absent
+
+  - name: Start dstat
+    raw:
+      cd /tmp/ ; nohup {{ dstat_full_command }} & sleep 1

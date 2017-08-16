@@ -19,6 +19,8 @@
 [grid:vars]
 path_ignite_logs=/gridgain/sas/envelope/log/HOSTNAME/union-module/log/*.log
 path_gc_logs=/gridgain/sas/envelope/log/HOSTNAME/union-module/gm_memory_union-module.0.current
+path_dstat_logs=/gridgain/sas/envelope/monitoring/HOSTNAME/dstat
+
 
 [elk]
 10.116.153.148 host_name=elk
