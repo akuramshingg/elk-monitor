@@ -3,6 +3,7 @@ filebeat.prospectors:
   paths:
     - {{ local_ignite_logs }}
     - {{ local_gc_logs }}
+    - {{ local_dstat_logs }}
     
   fields:
     grid.host: {{ ansible_hostname }}

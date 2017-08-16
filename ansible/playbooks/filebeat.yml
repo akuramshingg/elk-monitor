@@ -28,6 +28,7 @@
     set_fact:
       local_ignite_logs: "{{ path_ignite_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
       local_gc_logs: "{{ path_gc_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+      local_dstat_logs: "{{ path_dstat_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
 
   - name: Configure filebeat
     template:
