@@ -1,18 +1,21 @@
 filebeat.prospectors:
 - input_type: log
   paths:
-    - {{ local_ignite_logs }}
-    - {{ local_gc_logs }}
-    - {{ local_dstat_logs }}
-    
+  - {{ local_ignite_logs }}
+  - {{ local_gc_logs }}
+  - {{ local_dstat_logs }}/{{ dstat_log_file }}
+
   fields:
     grid.host: {{ ansible_hostname }}
-  
-  multiline.pattern: "(?m)^[<[]?\\d{2}([:-]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{2})|^\\s{4,}vmop|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
+    grid.group: {{ grid_group_name }}
+
+  fields_under_root: true
+
+  multiline.pattern: "(?m)^[<[]?\\d{2}([:-]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{2}|\\d*\\.\\d{3}:\\s)|^\\s{4,}vmop|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
   multiline.negate: true
   multiline.match: after
   multiline.max_lines: 1000000
   multiline.timeout: 5m
-  
+
 output.logstash:
   hosts: ["{{ hostvars[groups['elk'][0]]['inventory_hostname'] }}:{{ hostvars[groups['elk'][0]]['logstash_port'] }}"]

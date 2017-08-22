@@ -1,5 +1,5 @@
--Xms4g
--Xmx4g
+-Xms31g
+-Xmx31g
 -XX:+UseConcMarkSweepGC
 -XX:CMSInitiatingOccupancyFraction=75
 -XX:+UseCMSInitiatingOccupancyOnly

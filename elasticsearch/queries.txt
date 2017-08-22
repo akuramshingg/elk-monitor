@@ -6,9 +6,19 @@ curl -XDELETE 'localhost:9200/logstash-*?pretty'
 
 curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type: application/json' -d'
 {
-  "query": { 
+  "query": {
     "match": {
       "message_kind": "gc"
+    }
+  }
+}
+'
+ 
+curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "match": {
+      "fields.grid.group": "FD-4093-2017-08-11"
     }
   }
 }
@@ -16,9 +26,9 @@ curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type
 
 curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type: application/json' -d'
 {
-  "query": { 
+  "query": {
     "wildcard": {
-      "source": "*gc*"
+      "source": "*gc.txt"
     }
   }
 }

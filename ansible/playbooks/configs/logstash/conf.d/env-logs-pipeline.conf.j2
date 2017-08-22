@@ -121,7 +121,7 @@ filter {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
-            match => { "message" => "^%{TIMESTAMP:ts}:\s*%{BASE10NUM:uptime:float}:\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^(%{TIMESTAMP:ts}:\s*)?%{BASE10NUM:uptime:float}:\s*(?<message>(.|\r|\n)*)" }
             overwrite => [ "message" ]
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
@@ -778,11 +778,6 @@ filter {
         match => { "source" => "^.*[\\/]%{DATA:[src][file]}$" }
         tag_on_failure => [ "src_file_failure" ]
     }
-    
-	# Concatenate timestamp & offset for sorting
-	ruby {
-		code => "event.set('src.order', event.get('@timestamp').to_i * 10_000_000 + event.get('offset'))"
-	}
 }
 
 output {

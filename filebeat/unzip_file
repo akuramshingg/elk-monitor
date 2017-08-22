@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Usage: <zip_path>
+
+ZF=$1
+
+cd `dirname "$ZF"` && unzip `basename "$ZF"` && rm -f `basename "$ZF"`

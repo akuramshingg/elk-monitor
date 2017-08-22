@@ -1,0 +1,24 @@
+#!/bin/sh
+
+DIR=`dirname $0`
+
+for host_zip in `ls *.zip 2>/dev/null`;
+do
+	echo "Unzip host $host_zip"
+	host_dir="${host_zip%.*}"
+	#short_dir="${host_dir##*.}"
+	#[ ! -e $short_dir ] && host_dir=$short_dir
+	unzip $host_zip -d $host_dir && rm $host_zip
+done
+
+for host_tgz in `ls *.tar.gz 2>/dev/null`;
+do
+	echo "Untar host $host_tgz"
+	host_dir="${host_tgz%.*.*}"
+	#short_dir="${host_dir##*.}"
+	#[ ! -e $short_dir ] && host_dir=$short_dir
+	mkdir "$host_dir"
+	tar -xzf "$host_tgz" -C "$host_dir" && rm "$host_tgz"
+done
+
+find -name "*.zip" -exec $DIR/unzip_file {} \;

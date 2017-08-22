@@ -19,14 +19,14 @@
 
   - name: Compile filename
     set_fact:
-      local_dstat_log_file: "{{ local_dstat_logs }}/dstat.log"
+      local_dstat_log_file: "{{ local_dstat_logs }}/{{ dstat_log_file }}"
 
   - name: Compile dstat command
     set_fact:
       dstat_full_command: "{{ dstat_command }}{{ local_dstat_log_file }}"
 
   - name: Kill old dstat
-    shell: "pkill -f '{{ dstat_full_command }}' || true"
+    shell: "pkill -f '{{ local_dstat_log_file }}' || true"
     ignore_errors: yes
  
   - name: Clear old dstat log
