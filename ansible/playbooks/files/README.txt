@@ -1,1 +1,1 @@
-Download filebeats, logstash, elasticsearch and kibana from elastic.co and update version in playbooks/*.yml
+Download filebeats, logstash, elasticsearch, kibana from https://www.elastic.co/downloads and update appropriate versions in playbooks/*.yml
