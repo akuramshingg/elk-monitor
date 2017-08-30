@@ -5,9 +5,9 @@
 5) Run:
  ansible-playbook -i inventory -U root playbooks/prepare.yml        - install java
  ansible-playbook -i inventory -U root playbooks/filebeat.yml       - install filebeat to all grid servers
- ansible-playbook -i inventory -U root playbooks/logstash.yml       - install logstash to elk server
  ansible-playbook -i inventory -U root playbooks/elasticsearch.yml  - install elasticsearch to elk server
  ansible-playbook -i inventory -U root playbooks/kibana.yml         - install kibana to elk server
+ ansible-playbook -i inventory -U root playbooks/logstash.yml       - install logstash to elk server
 6) Make service ports visible outside of LXC container, eg. for kibana
  iptables -t nat -A PREROUTING -p tcp -i <ifname> --dport 8080 -j DNAT --to-destination <lxcaddr>:8080
 7) Use the force and update ansible scripts, not actual server configuration - be at light side of the force!

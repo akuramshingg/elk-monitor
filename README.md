@@ -8,6 +8,7 @@ This repo contains ansible scripts to install ELK + filebeat&dstat in RedHat lin
 The main components of log collecting and analyzing system is:
 * Filebeat - agent to send log messages from any log files to ELK server (work on all grid nodes)
 * dstat - simple and temporary solytion, but it allow to monitor some OS level metrics (work on all grid nodes)
-* logstash - parse logs from text messages to get some metrics (work on ELK node)
 * elasticsearch - simple database with schema less documents and full text search feature (work on ELK node)
 * kibana - web UI to select log
+* logstash - parse logs from text messages to get some metrics (work on ELK node)
+
