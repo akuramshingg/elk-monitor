@@ -8,9 +8,10 @@
  ansible-playbook -i inventory -U root playbooks/elasticsearch.yml  - install elasticsearch to elk server
  ansible-playbook -i inventory -U root playbooks/kibana.yml         - install kibana to elk server
  ansible-playbook -i inventory -U root playbooks/logstash.yml       - install logstash to elk server
-6) Make service ports visible outside of LXC container, eg. for kibana
+6) Enshure that logstash add index template into elasticsearch (start logstash after elasticsearch and find "Installing elasticsearch template to ..." in logstash log (/var/logstash/logstash.log), start kibana
+7) Make service ports visible outside of LXC container, eg. for kibana
  iptables -t nat -A PREROUTING -p tcp -i <ifname> --dport 8080 -j DNAT --to-destination <lxcaddr>:8080
-7) Use the force and update ansible scripts, not actual server configuration - be at light side of the force!
+8) Use the force and update ansible scripts, not actual server configuration - be at light side of the force!
 
 
 
