@@ -11,7 +11,11 @@
 6) Enshure that logstash add index template into elasticsearch (start logstash after elasticsearch and find "Installing elasticsearch template to ..." in logstash log (/var/logstash/logstash.log), start kibana
 7) Make service ports visible outside of LXC container, eg. for kibana
  iptables -t nat -A PREROUTING -p tcp -i <ifname> --dport 8080 -j DNAT --to-destination <lxcaddr>:8080
-8) Use the force and update ansible scripts, not actual server configuration - be at light side of the force!
+8) Start log shipping (put logs into log dir, so filebeat send it to logstash and logstash create index in elasticasearch)
+9) Select index patern in kibana: open kibana UI in web browser (localhost:8080), go to Management->Index Patterns and select logstash-*
+10) Import visualize configuration into kibana: open kibana UI in web browser (localhost:8080), go to Management->Saved Objects and Import playbooks/configs/kibana/export.json file
+0) Use the force and update ansible scripts, not actual server configuration - be at light side of the force!
+
 
 
 
