@@ -472,6 +472,9 @@
             "host": {
               "type": "keyword"
             },
+            "group": {
+              "type": "keyword"
+            },
             "name": {
               "type": "keyword"
             }
