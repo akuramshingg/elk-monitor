@@ -1,0 +1,40 @@
+# filebeat.yml
+---
+- hosts: grid
+  user: root
+  vars:
+    metricbeat: metricbeat-5.5.2-x86_64.rpm
+
+  tasks:
+
+  - name: Create temp dir
+    file: 
+      path=/tmp/ansible 
+      recurse=yes
+      state=directory
+
+  - name: Copy metricbeat package to grid
+    copy: 
+      src: files/{{ metricbeat }}
+      dest: /tmp/ansible/{{ metricbeat }}
+      force: true
+
+  - name: Install metricbeat
+    yum:
+      name: /tmp/ansible/{{ metricbeat }}
+      state: present
+
+  - name: Configure metricbeatbeat
+    template:
+      src=configs/metricbeat/metricbeat.yml.j2
+      dest=/etc/metricbeat/metricbeat.yml
+
+  - name: Restart metricbeat
+    service:
+      name: metricbeat
+      state: restarted
+
+  - name: Remove metricbeat distrib
+    file:
+      path=/tmp/ansible/{{ metricbeat }}
+      state=absent

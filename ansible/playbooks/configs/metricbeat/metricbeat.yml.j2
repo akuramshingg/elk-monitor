@@ -1,0 +1,16 @@
+metricbeat.modules:
+- module: system
+  metricsets:
+    - cpu
+    - load
+    - diskio
+    - filesystem
+    - fsstat
+    - memory
+    - network
+    - process
+  enabled: true
+  period: 10s
+  processes: ['.*']
+output.logstash:
+  hosts: ["{{ hostvars[groups['elk'][0]]['inventory_hostname'] }}:{{ hostvars[groups['elk'][0]]['logstash_port'] }}"]
