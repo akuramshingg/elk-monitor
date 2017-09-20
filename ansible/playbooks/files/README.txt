@@ -1,1 +1,2 @@
 Download filebeats, logstash, elasticsearch, kibana from https://www.elastic.co/downloads, jre from http://oracle.com and update appropriate versions in playbooks/*.yml
+Download metricbeats visualization from https://artifacts.elastic.co/downloads/beats/beats-dashboards/beats-dashboards-<version>.zip , for example https://artifacts.elastic.co/downloads/beats/beats-dashboards/beats-dashboards-5.6.0.zip

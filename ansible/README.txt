@@ -14,6 +14,7 @@
 8) Start log shipping (put logs into log dir, so filebeat send it to logstash and logstash create index in elasticasearch)
 9) Select index patern in kibana: open kibana UI in web browser (localhost:8080), go to Management->Index Patterns and select logstash-*
 10) Import visualize configuration into kibana: open kibana UI in web browser (localhost:8080), go to Management->Saved Objects and Import playbooks/configs/kibana/export.json file
+11) Import visualize configuration for metricbeats: run /usr/share/metricbeats/scripts/import_dashboards -file <path_to_dashboards> (on ELK server)
 0) Use the force and update ansible scripts, not actual server configuration - be at light side of the force!
 
 
