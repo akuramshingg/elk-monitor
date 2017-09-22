@@ -1,7 +1,11 @@
 #!/bin/sh
 
-DONE=`sed -e "s/},{/},\n{/g" /var/lib/filebeat/registry | awk -v FS=, '{print $2}' | awk -v FS=: 'BEGIN {sum = 0} {sum = sum + $2} END {print sum/1024/1024 " M"}'`
+DONE=`sed -e "s/},{/},\n{/g" /var/lib/filebeat/registry | awk -v FS=, '{print $2}' | awk -v FS=: 'BEGIN {sum = 0} {sum = sum + $2} END {print sum/1024/1024}'`
 
-TOTAL=`sed -e "s/},{/},\n{/g" /var/lib/filebeat/registry | awk -v FS=, '{print $1}' | awk -v FS=: '{system("du -sb " $2)}' | awk 'BEGIN {sum = 0} {sum = sum + $1} END {print sum/1024/1024 " M"}'`
+TOTAL=`sed -e "s/},{/},\n{/g" /var/lib/filebeat/registry | awk -v FS=, '{print $1}' | awk -v FS=: '{system("du -sb " $2)}' | awk 'BEGIN {sum = 0} {sum = sum + $1} END {print sum/1024/1024}'`
 
-echo Filebeat progress $DONE of $TOTAL
+REMAIN=`echo $DONE $TOTAL | awk '{print $2 - $1}'`
+
+echo Filebeat progress $DONE M of $TOTAL M
+
+echo Remaining $REMAIN M

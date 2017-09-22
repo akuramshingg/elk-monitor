@@ -11,7 +11,7 @@ filebeat.prospectors:
 
   fields_under_root: true
 
-  multiline.pattern: "(?m)^[<[]?\\d{2}([:-]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{2}|\\d*\\.\\d{3}:\\s)|^\\s{4,}vmop|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
+  multiline.pattern: "(?m)^([<[]|\\[.*?\\]\\s*)?\\d{2}([:-]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{2}|\\d*\\.\\d{3}:\\s)|^\\s{4,}vmop|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
   multiline.negate: true
   multiline.match: after
   multiline.max_lines: 1000000

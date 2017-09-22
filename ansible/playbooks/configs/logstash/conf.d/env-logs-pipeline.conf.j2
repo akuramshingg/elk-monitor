@@ -85,10 +85,12 @@ filter {
             match => { "message" => "^%{TIMESTAMP:ts}\s*\[%{LOGLEVEL:level}\s*\]\s*(\[%{DATA:emitter}\]\s*\[%{DATA:[thread][name]}\]\s*)?-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIMESTAMP:ts}\s*%{LOGLEVEL:level}\s*%{DATA:emitter}(:\d+)?\s*-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIMESTAMP:ts}\s*\[%{DATA:[thread][name]}\]\s*%{LOGLEVEL:level}\s+%{DATA:emitter}:\s*-\s*(?<message>(.|\r|\n)*)" }
-            match => { "message" => "^(\[%{DATA:[thread][name]}\]\s*)?%{TIME:tm}\s*%{LOGLEVEL:level}\s*%{DATA:emitter}:\d+\s*-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIME:tm}\s+\|-%{LOGLEVEL:level}\s+in\s+%{DATA:emitter}\s*-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIME:tm}\s*\[%{LOGLEVEL:level}\s*\]\s*\[%{DATA:emitter}\]\s*(\[T:\]\s*)?-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIME:tm}\s+%{LOGLEVEL:level}\s*\[%{DATA:[thread][name]}\]\s*%{DATA:emitter}\s*-\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^\[\[%{DATA:[module][name]}\]-\[%{DATA:[module][service]}\]-%{DATA:[thread][name]}\]\s*%{TIME:tm}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
+            match => { "message" => "^\[%{DATA:[thread][name]}\s*\|\s*%{DATA:[module][service]}\]\s*%{TIME:tm}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
+            match => { "message" => "^(\[%{DATA:[thread][name]}\s*\]\s*)?%{TIME:tm}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
             match => { "message" => "^<%{TIME:tm}><%{DATA:[thread][name]}><%{DATA:emitter}>\s*(?<message>(.|\r|\n)*)" }
             overwrite => [ "message" ]
             add_field => { "message_kind" => "log" }
@@ -136,17 +138,17 @@ filter {
     
     # Default log full message pattern (splitting to timestamp and remaining message)
     if ![message_kind] {
-		grok {
-			patterns_dir => ["/etc/logstash/patterns"]
-			patterns_files_glob => "env-logs-patterns"
-			match => { "message" => "^%{TIMESTAMP:ts}\s*(?<message>(.|\r|\n)*)" }
-			match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
-			overwrite => [ "message" ]
-			add_field => { "message_kind" => "log" }
+        grok {
+            patterns_dir => ["/etc/logstash/patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "message" => "^%{TIMESTAMP:ts}\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
+            overwrite => [ "message" ]
+            add_field => { "message_kind" => "log" }
             remove_tag => [ "message_failure" ]
-			tag_on_failure => [ "message_failure" ]
-			timeout_millis => 0
-		}
+                tag_on_failure => [ "message_failure" ]
+                timeout_millis => 0
+            }
     }
 
     # Thread dump message pattern
@@ -244,7 +246,7 @@ filter {
         }
         if [ss] {
             ruby {
-                code => "event.set('@timestamp', LogStash::Timestamp.at(event.get('ss').time.to_f + event.get('uptime')))"
+                code => "event.timestamp = LogStash::Timestamp.at(event.get('ss').time.to_f + event.get('uptime'))"
             }
         }
     }
@@ -286,28 +288,27 @@ filter {
             }
         }
         
-		if ![grid][host] {
+        if ![grid][host] {
             # Extracting grid host from grid name
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "[grid][name]" => "^%{DATA:[grid][name]}\%%{DATA:[grid][host]}$" }
-                overwrite => [ "[grid][name]" ]
+                match => { "[grid][name]" => "^%{DATA:[grid][name]}\%(?<grid.host>grid\d+)$" }
                 remove_tag => [ "grid_host_failure" ]
                 tag_on_failure => [ "grid_host_failure" ]
             }
         }
 
-		if ![grid][host] {
-        	# Try to parse grid host from message
-			grok {
-				patterns_dir => ["/etc/logstash/patterns"]
-				patterns_files_glob => "env-logs-patterns"
-				match => { "message" => "host\s+name:\s+%{WORD:[grid][host]}" }
-				remove_tag => [ "grid_host_failure" ]
-				tag_on_failure => [ "grid_host_failure" ]
-			}
-		}
+        if ![grid][host] {
+            # Try to parse grid host from message
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "host\s+name:\s+%{WORD:[grid][host]}" }
+                remove_tag => [ "grid_host_failure" ]
+                tag_on_failure => [ "grid_host_failure" ]
+            }
+        }
         
         if [grid][host] {
         
@@ -317,23 +318,23 @@ filter {
                 code => "@@source_grid_host[event.get('source')] = event.get('[grid][host]')"
             }
         } else {
-        
-			# Try to restore grid host from cache
-			ruby {
-				code => "i = 0; host = nil; while host == nil && i < 10 do if i > 0 then sleep(0.01) end; host = @@source_grid_host[event.get('source')]; i += 1 end; if host != nil then event.set('[grid][host]', host) else event.tag('source_grid_host_failure') end"
-				remove_tag => [ "grid_host_failure" ]
-			}
+ 
+            # Try to restore grid host from cache
+            ruby {
+                code => "i = 0; host = nil; while host == nil && i < 10 do if i > 0 then sleep(0.01) end; host = @@source_grid_host[event.get('source')]; i += 1 end; if host != nil then event.set('[grid][host]', host) else event.tag('source_grid_host_failure') end"
+                remove_tag => [ "grid_host_failure" ]
+            }
         }
-	}
+    }
         
 	# Parsing default log specific messages
     if [message_kind] == "log" {
-        
+
         if ![message_type] {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Topology snapshot \[ver=%{NONNEGINT:[top][snap][ver]:int}, servers=%{NONNEGINT:[top][snap][servers]:int}, clients=%{NONNEGINT:[top][snap][clients]:int}, CPUs=%{NONNEGINT:[top][snap][cpu_count]:int}, heap=%{BASE10NUM:[top][snap][heap_size_gb]:float}GB\]" }
+                match => { "message" => "^Topology snapshot \[ver=%{NONNEGINT:[top][ver]:int}, servers=%{NONNEGINT:[top][servers]:int}, clients=%{NONNEGINT:[top][clients]:int}, CPUs=%{NONNEGINT:[top][cpu_count]:int}, heap=%{BASE10NUM:[top][heap_size_gb]:float}GB\]" }
                 add_field => { "message_type" => "top_snap" }
                 tag_on_failure => []
             }
@@ -370,6 +371,130 @@ filter {
                 }
             }
         }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to wait for partition map exchange \[topVer=AffinityTopologyVersion \[topVer=%{NONNEGINT:[pme][top][ver]:int}, minorTopVer=%{NONNEGINT:[pme][top][minor]:int}\], node=%{UUID:[pme][node][id]}\]" }
+                add_field => { "message_type" => "pe_wait" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to wait for partition release future \[topVer=AffinityTopologyVersion \[topVer=%{NONNEGINT:[prf][top][ver]:int}, minorTopVer=%{NONNEGINT:[prf][top][minor]:int}\], node=%{UUID:[prf][node][id]}\]" }
+                add_field => { "message_type" => "pe_wait" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Ready affinity version: AffinityTopologyVersion \[topVer=%{NONNEGINT:[top][ver]:int}, minorTopVer=%{NONNEGINT:[top][minor]:int}\]" }
+                add_field => { "message_type" => "pe_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Last exchange future: " }
+                add_field => { "message_type" => "pe_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Last %{NONNEGINT:[pme][futures][shown]} exchange futures \(total: %{NONNEGINT:[pme][futures][total]}\):" }
+                add_field => { "message_type" => "pe_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(Pending transactions:|Pending explicit locks:|Pending cache futures:|Pending atomic cache futures:|Pending data streamer futures:|Pending transaction deadlock detection futures:)" }
+                add_field => { "message_type" => "pe_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^>>>\s+\w+\s+\[" }
+                add_field => { "message_type" => "pe_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if [message_type] in [ "pe_wait", "pe_debug"] {
+
+            ruby {
+                init => "require 'securerandom'"
+                code => "event.set('level', 'DEBUG')"
+            }
+
+            aggregate {
+                task_id => "%{source}"
+                inactivity_timeout => 600
+                code => "id = nil; ts = event.timestamp.time.to_f; map.each { |k, v| if (ts > (v - 5.0)) and (ts < (v + 5.0)) then id = k; break; end; }; if id == nil then id = SecureRandom.uuid; map[id] = ts; end; event.set('aggregate_id', id)"
+            }
+        }
+
+        if [message_type] == "pe_wait" {
+
+            aggregate {
+                task_id => "%{aggregate_id}"
+                inactivity_timeout => 10
+                push_map_as_event_on_timeout => true
+                code => "map.merge!(event.to_hash)"
+                timeout_code => "event.set('level', 'WARN'); event.set('message_type', 'pe_aggregate'); m = event.get('message'); dm = {}; event.to_hash.each { |k, v| if k.start_with?('debug_message_') then off = k['debug_message_'.length..-1].to_i; dm[off] = v; end }; dm.sort.map { |off, msg| m += 10.chr + 10.chr + msg; event.remove('debug_message_' + off.to_s) }; event.set('message', m)"
+            }
+        }
+
+        if [message_type] == "pe_debug" {
+
+            aggregate {
+                task_id => "%{aggregate_id}"
+                code => "m = event.get('message'); if m.length > 10000 then m = (m[0..4999] + '... ' + (m.length - 10000).to_s + ' char(s) ommited ...' + m[-5000..-1]) end; map['debug_message_' + event.get('offset').to_s] = m"
+            }
+        }
+
+        # Fix log level to CONFIG
+        grok {
+            patterns_dir => ["/etc/logstash/patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "message" => "^Checkpoints are disabled" }
+            match => { "message" => "^Collision resolution is disabled" }
+            match => { "message" => "^Failure detection timeout will be ignored" }
+            match => { "message" => "^Message queue limit is set to 0" }
+            match => { "message" => "^Peer class loading is enabled" }
+            match => { "message" => "^Rolling updates are disabled" }
+            match => { "message" => "^User or internal attribute has the same name as environment or system property and will take precedence" }
+            remove_field => [ "level" ]
+            tag_on_failure => []
+        }
+        if ![level] {
+            mutate {
+                add_field => { "level" => "CONFIG" }
+            }
+        }
+   
     }
     
     # Parsing GC log specific messages

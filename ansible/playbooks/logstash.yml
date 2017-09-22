@@ -19,9 +19,20 @@
       dest: /tmp/ansible/{{ logstash }}
       force: true
 
+  - name: Copy logstash plugins to elk
+    copy: 
+      src: files/logstash-offline-plugins.zip
+      dest: /tmp/ansible/logstash-offline-plugins.zip
+      force: true
+
   - name: Install logstash
     yum:
       name: /tmp/ansible/{{ logstash }}
+      state: present
+
+  - name: Install logstash plugins
+    logstash_plugin:
+      name: file:///tmp/ansible/logstash-offline-plugins.zip
       state: present
 
   - name: Configure logstash - logstash.yml
