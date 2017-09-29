@@ -18,7 +18,7 @@ curl -XPOST 'localhost:9200/logstash-*/_delete_by_query?pretty' -H 'Content-Type
 {
   "query": {
     "match": {
-      "fields.grid.group": "FD-4093-2017-08-11"
+      "grid.group": "FD-4093-2017-08-11"
     }
   }
 }
