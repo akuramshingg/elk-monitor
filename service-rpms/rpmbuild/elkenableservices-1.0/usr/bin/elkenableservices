@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [ "${1:-enable}" = "enable" ]; then
+    systemctl enable filebeat
+else
+    systemctl disable filebeat
+fi
