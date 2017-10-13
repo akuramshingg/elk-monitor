@@ -10,54 +10,74 @@ input {
 filter {
 
     # Dstat header message pattern
-    if ![message_kind] {
+    if ![message_kind] or [message_kind] == "dstat" {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
             match => { "message" => "(?<message>(?m)^\"Dstat \d+(\.\d+)* CSV output\".*)\"Date:\",\"%{TIMESTAMP:ts} \w+\"\n\n%{DATA:[csv][header][1]}\n%{DATA:[csv][header][2]}$" }
             overwrite => [ "message" ]
-            add_field => { "message_kind" => "dstat" }
+            add_field => { "message_type" => "dstat_header" }
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
         }
-    }
-    if [message_kind] == "dstat" {
-        ruby {
-            init => "@@source_header = {}"
-            code => "h1 = event.get('[csv][header][1]').gsub(' ','_').split(','); h2 = event.get('[csv][header][2]').gsub(' ','_').split(','); h2.each_index{ |i| if h1[i] == nil || h1[i] == '' then h1[i] = h1[i-1] end }; h2.each_index{ |i| h = 'dstat.' + h1[i][1..-2] + '.' + h2[i][1..-2]; h1[i] = h }; @@source_header[event.get('source')] = h1"
-            remove_field => [ "[csv][header][1]", "[csv][header][2]" ]
+        if [message_type] == "dstat_header" {
+            if ![message_kind] {
+                mutate {
+                    add_field => { "message_kind" => "dstat" }
+                }
+            }
+            ruby {
+                init => "@@source_header = {}"
+                code => "h1 = event.get('[csv][header][1]').gsub(' ','_').split(','); h2 = event.get('[csv][header][2]').gsub(' ','_').split(','); h2.each_index{ |i| if h1[i] == nil || h1[i] == '' then h1[i] = h1[i-1] end }; h2.each_index{ |i| h = 'dstat.' + h1[i][1..-2] + '.' + h2[i][1..-2]; h1[i] = h }; @@source_header[event.get('source')] = h1"
+                remove_field => [ "[csv][header][1]", "[csv][header][2]" ]
+            }
         }
     }
     
     # GC log header message pattern
-    if ![message_kind] {
+    if ![message_kind] or [message_kind] == "gc" {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
             match => { "message" => "^Java.*\nMemory:\s*%{DATA:[gc][mem][page_size]} page, physical %{DATA:[gc][mem][phys][total]}\(%{DATA:[gc][mem][phys][free]} free\), swap %{DATA:[gc][mem][swap][total]}\(%{DATA:[gc][mem][swap][free]} free\)\nCommandLine flags:\s+%{DATA:[gc][flags]}\s*(\n|$)" }
             overwrite => [ "message" ]
-            add_field => { "message_kind" => "gc" }
+            add_field => { "message_type" => "gc_header" }
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
+        }
+        if [message_type] == "gc_header" {
+            if ![message_kind] {
+                mutate {
+                    add_field => { "message_kind" => "gc" }
+                }
+            }
         }
     }
 
     # Thread dump header message pattern
-    if ![message_kind] {
+    if ![message_kind] or [message_kind] == "td" {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
             match => { "message" => "^%{TIMESTAMP:ts}\n(?<message>Full thread dump Java.*)" }
             overwrite => [ "message" ]
-            add_field => { "message_kind" => "td" }
+            add_field => {
+                "message_kind" => "td"
+                "message_type" => "td_header"
+            }
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
         }
-    }
-    if [message_kind] == "td" {
-        ruby {
-            init => "@@source_ts = {}"
-            code => "@@source_ts[event.get('source')] = event.get('ts')"
+        if [message_type] == "td_header" {
+            if ![message_kind] {
+                mutate {
+                    add_field => { "message_kind" => "td" }
+                }
+            }
+            ruby {
+                init => "@@source_ts = {}"
+                code => "@@source_ts[event.get('source')] = event.get('ts')"
+            }
         }
     }
 
@@ -77,7 +97,7 @@ filter {
     }
     
     # Default log full message pattern (splitting to timestamp, loglevel, thread, emitter and remaining message)
-    if ![message_kind] {
+    if ![message_kind] or [message_kind] == "log" {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
@@ -88,71 +108,58 @@ filter {
             match => { "message" => "^%{TIME:tm}\s+\|-%{LOGLEVEL:level}\s+in\s+%{DATA:emitter}\s*-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIME:tm}\s*\[%{LOGLEVEL:level}\s*\]\s*\[%{DATA:emitter}\]\s*(\[T:\]\s*)?-\s*(?<message>(.|\r|\n)*)" }
             match => { "message" => "^%{TIME:tm}\s+%{LOGLEVEL:level}\s*\[%{DATA:[thread][name]}\]\s*%{DATA:emitter}\s*-\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^%{DATA:[module][name]}:\[%{DATA:[thread][name]}\]\s*%{TIMESTAMP:ts}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
             match => { "message" => "^\[\[%{DATA:[module][name]}\]-\[%{DATA:[module][service]}\]-%{DATA:[thread][name]}\]\s*%{TIME:tm}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
             match => { "message" => "^\[%{DATA:[thread][name]}\s*\|\s*%{DATA:[module][service]}\]\s*%{TIME:tm}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
             match => { "message" => "^(\[%{DATA:[thread][name]}\s*\]\s*)?%{TIME:tm}\s+%{LOGLEVEL:level}\s+%{DATA:emitter}:%{NONNEGINT:[line][number]:int} - (?<message>(.|\r|\n)*)" }
             match => { "message" => "^<%{TIME:tm}><%{DATA:[thread][name]}><%{DATA:emitter}>\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^%{TIMESTAMP:ts}\s*(?<message>(.|\r|\n)*)" }
+            match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
             overwrite => [ "message" ]
-            add_field => { "message_kind" => "log" }
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
             timeout_millis => 0
         }
+        if ![message_kind] and !("message_failure" in [tags]) {
+            mutate {
+                add_field => { "message_kind" => "log" }
+            }
+        }
     }
 
-    # Safepoint log full message pattern
-    if ![message_kind] {
+    # Safepoint message pattern
+    if ![message_kind] or ([message_kind] == "log" and "message_failure" in [tags]) {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
             match => { "message" => "^\s+vmop\s*\[threads: total initially_running wait_to_block\]\s*\[time: spin block sync cleanup vmop\] page_trap_count\n%{BASE10NUM:uptime:float}:\s*%{DATA:[safepoint][vmop]}\s*\[\s*%{NONNEGINT:[safepoint][threads][total]:int}\s+%{NONNEGINT:[safepoint][threads][initially_running]:int}\s+%{NONNEGINT:[safepoint][threads][wait_to_block]:int}\s*\]\s*\[\s*%{NONNEGINT:[safepoint][time][spin]:int}\s+%{NONNEGINT:[safepoint][time][block]:int}\s+%{NONNEGINT:[safepoint][time][sync]:int}\s+%{NONNEGINT:[safepoint][time][cleanup]:int}\s+%{NONNEGINT:[safepoint][time][vmop]:int}\s*\]\s*%{NONNEGINT:[safepoint][page_trap_count]:int}" }
-            add_field => { "message_kind" => "safepoint" }
+            add_field => { "message_type" => "safepoint" }
             remove_tag => [ "message_failure" ]
             tag_on_failure => [ "message_failure" ]
             timeout_millis => 0
         }
-        if [message_kind] == "safepoint" {
+        if [message_type] == "safepoint" {
+            if ![message_kind] {
+                mutate {
+                    add_field => { "message_kind" => "log" }
+                }
+            }
             mutate {
                 replace => { "message" => "vmop: %{[safepoint][vmop]}" }
             }
         }
     }
-
-    # GC log full message pattern
-    if ![message_kind] or ([message_kind] == "gc" and "message_failure" in [tags]) {
-        grok {
-            patterns_dir => ["/etc/logstash/patterns"]
-            patterns_files_glob => "env-logs-patterns"
-            match => { "message" => "^(%{TIMESTAMP:ts}:\s*)?%{BASE10NUM:uptime:float}:\s*(?<message>(.|\r|\n)*)" }
-            overwrite => [ "message" ]
-            remove_tag => [ "message_failure" ]
-            tag_on_failure => [ "message_failure" ]
-            timeout_millis => 0
-        }
-        if ![message_kind] {
-            mutate {
-                add_field => { "message_kind" => "gc" }
-            }
-        }
-    }
     
-    # Default log full message pattern (splitting to timestamp and remaining message)
-    if ![message_kind] {
-        grok {
-            patterns_dir => ["/etc/logstash/patterns"]
-            patterns_files_glob => "env-logs-patterns"
-            match => { "message" => "^%{TIMESTAMP:ts}\s*(?<message>(.|\r|\n)*)" }
-            match => { "message" => "^\[%{TIME:tm}\]\s*(?<message>(.|\r|\n)*)" }
-            overwrite => [ "message" ]
-            add_field => { "message_kind" => "log" }
+    # Dstat message pattern
+    if [message_kind] == "dstat" and ![message_type] {
+        ruby {
+            code => "h = @@source_header[event.get('source')]; r = event.get('message').split(','); h.each_index{ |i| if h[i] == 'dstat.system.time' then event.set('ts', r[i]) else event.set(h[i], r[i].to_f) end }; event.set('message', '')"
             remove_tag => [ "message_failure" ]
-                tag_on_failure => [ "message_failure" ]
-                timeout_millis => 0
-            }
+        }
     }
 
     # Thread dump message pattern
-    if [message_kind] == "td" and "message_failure" in [tags] {
+    if [message_kind] == "td" and ![message_type] {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
@@ -164,15 +171,27 @@ filter {
             code => "ts = @@source_ts[event.get('source')]; if ts != nil then event.set('ts',  ts) else event.tag('ts_nil') end"
         }
     }
-    
-    # Dstat message pattern
-    if [message_kind] == "dstat" and "message_failure" in [tags] {
-        ruby {
-            code => "h = @@source_header[event.get('source')]; r = event.get('message').split(','); h.each_index{ |i| if h[i] == 'dstat.system.time' then event.set('ts', r[i]) else event.set(h[i], r[i].to_f) end }; event.set('message', '')"
+
+    # GC log full message pattern
+    if [message_kind] == "gc" and ![message_type] {
+        grok {
+            patterns_dir => ["/etc/logstash/patterns"]
+            patterns_files_glob => "env-logs-patterns"
+            match => { "message" => "^(%{TIMESTAMP:ts}:\s*)?%{BASE10NUM:uptime:float}:\s*(?<message>(.|\r|\n)*)" }
+            overwrite => [ "message" ]
             remove_tag => [ "message_failure" ]
+            tag_on_failure => [ "message_failure" ]
+            timeout_millis => 0
         }
     }
-    
+
+    # Default message kind
+    if ![message_kind] {
+        mutate {
+            add_field => { "message_kind" => "log" }
+        }
+    }
+
     # Last date processing
     if [ts] {
     
@@ -206,7 +225,7 @@ filter {
         # Parsing log timestamp
         date {
             locale => "en"
-            match => ["ts", "YYYY-MM-dd'T'HH:mm:ss.SSSZ", "YYYY-MM-dd HH:mm:ss.SSS", "YYYY-MM-dd HH:mm:ss,SSS", "YYYY.MM.dd HH:mm:ss.SSS", "YYYY-MM-dd HH:mm:ss", "YYYY.MM.dd HH:mm:ss", "dd MMM YYYY HH:mm:ss", "dd-MM HH:mm:ss", "HH:mm:ss" ]
+            match => ["ts", "YYYY-MM-dd'T'HH:mm:ss.SSSZ", "YYYY-MM-dd HH:mm:ss.SSS", "YYYY-MM-dd HH:mm:ss,SSS", "YYYY.MM.dd HH:mm:ss.SSS", "YYYY-MM-dd HH:mm:ss", "YYYY.MM.dd HH:mm:ss", "dd.MM.YYYY HH:mm:ss", "dd MMM YYYY HH:mm:ss", "dd-MM HH:mm:ss", "HH:mm:ss" ]
             timezone => "Europe/Moscow"
             target => "@timestamp"
             remove_field => [ "ts" ]
@@ -339,6 +358,7 @@ filter {
                 tag_on_failure => []
             }
         }
+
         if ![message_type] {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
@@ -348,6 +368,7 @@ filter {
                 tag_on_failure => []
             }
         }
+
         if ![message_type] {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
@@ -357,6 +378,7 @@ filter {
                 tag_on_failure => []
             }
         }
+
         if ![message_type] {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
@@ -463,7 +485,7 @@ filter {
                 inactivity_timeout => 10
                 push_map_as_event_on_timeout => true
                 code => "map.merge!(event.to_hash)"
-                timeout_code => "event.set('level', 'WARN'); event.set('message_type', 'pe_aggregate'); m = event.get('message'); dm = {}; event.to_hash.each { |k, v| if k.start_with?('debug_message_') then off = k['debug_message_'.length..-1].to_i; dm[off] = v; end }; dm.sort.map { |off, msg| m += 10.chr + 10.chr + msg; event.remove('debug_message_' + off.to_s) }; event.set('message', m)"
+                timeout_code => "if event.include?('message_type') then event.set('level', 'WARN'); event.set('message_type', 'pe_aggregate'); m = event.get('message'); dm = {}; event.to_hash.each { |k, v| if k.start_with?('debug_message_') then off = k['debug_message_'.length..-1].to_i; dm[off] = v; end }; dm.sort.map { |off, msg| m += 10.chr + 10.chr + msg; event.remove('debug_message_' + off.to_s) }; event.set('message', m); else event.cancel(); end"
             }
         }
 

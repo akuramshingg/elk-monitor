@@ -26,9 +26,11 @@
 
   - name: Create patch variables
     set_fact:
-      local_ignite_logs: "{{ path_ignite_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+      local_app_logs: "{{ path_app_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+      local_err_logs: "{{ path_err_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
       local_gc_logs: "{{ path_gc_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
       local_dstat_logs: "{{ path_dstat_logs | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
+      local_thread_dumps: "{{ path_thread_dumps | regex_replace(\"HOSTNAME\", ansible_hostname) }}"
 
   - name: Configure filebeat
     template:

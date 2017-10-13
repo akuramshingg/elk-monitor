@@ -1,17 +1,74 @@
 filebeat.prospectors:
+
 - input_type: log
   paths:
-  - {{ local_ignite_logs }}
-  - {{ local_gc_logs }}
-  - {{ local_dstat_logs }}/{{ dstat_log_file }}
+  - {{ local_app_logs }}
 
   fields:
-    grid.host: {{ ansible_hostname }}
-    grid.group: {{ grid_group_name }}
+    message_kind: log
+    grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
 
-  multiline.pattern: "(?m)^([<[]|\\[.*?\\]\\s*)?\\d{2}([:-]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{2}|\\d*\\.\\d{3}:\\s)|^\\s{4,}vmop|^.*?prio=\\d+ tid=0x[0-9a-f]+ nid=0x[0-9a-f]+"
+  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?\\s+\\[?(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - {{ local_err_logs }}
+
+  fields:
+    message_kind: log
+    grid.group: "{{ grid_group_name }}"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s|^Caused by: "
+  multiline.negate: false
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - {{ local_dstat_logs }}/{{ dstat_log_file }}
+
+  fields:
+    message_kind: dstat
+    grid.group: "{{ grid_group_name }}"
+
+  fields_under_root: true
+
+- input_type: log
+  paths:
+  - {{ local_gc_logs }}
+
+  fields:
+    message_kind: gc
+    grid.group: "{{ grid_group_name }}"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\d"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - {{ local_thread_dumps }}
+
+  fields:
+    message_kind: td
+    grid.group: "{{ grid_group_name }}"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s*$"
   multiline.negate: true
   multiline.match: after
   multiline.max_lines: 1000000

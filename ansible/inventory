@@ -1,32 +1,22 @@
 [grid]
-10.116.214.1
-10.116.214.2
-10.116.214.3
-10.116.214.4
-10.116.214.5
-10.116.214.6
-10.116.214.7
-10.116.214.8
-10.116.214.9
-10.116.214.10
-10.116.214.11
-10.116.214.12
-10.116.214.13
-10.116.214.14
-10.116.214.15
-10.116.214.16
+192.168.0.2
+192.168.0.3
+192.168.0.4
+192.168.0.5
 
 [grid:vars]
-grid_group_name=gera
+grid_group_name=cluster_name_or_issue_label
 
-path_ignite_logs=/gridgain/sas/envelope/log/HOSTNAME/union-module/log/*.log
-path_gc_logs=/gridgain/sas/envelope/log/HOSTNAME/union-module/gc_memory_union-module.0.current
-path_dstat_logs=/gridgain/sas/envelope/monitoring/HOSTNAME
+path_app_logs=/var/logs/HOSTNAME/*envelope.log
+path_err_logs=/var/logs/HOSTNAME/*envelope-err.log
+path_gc_logs=/var/logs/HOSTNAME/*gc.log*
+path_dstat_logs=/var/logs/HOSTNAME
+path_thread_dumps=/var/logs/HOSTNAME/*.tdump
 dstat_log_file=dstat.csv
 
 
 [elk]
-10.116.153.148 host_name=elk
+192.168.0.1 host_name=elk_server
 
 [elk:vars]
 logstash_port=5044
