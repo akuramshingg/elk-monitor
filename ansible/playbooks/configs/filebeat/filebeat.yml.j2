@@ -6,6 +6,7 @@ filebeat.prospectors:
 
   fields:
     message_kind: log
+    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
@@ -22,6 +23,7 @@ filebeat.prospectors:
 
   fields:
     message_kind: log
+    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
@@ -38,6 +40,7 @@ filebeat.prospectors:
 
   fields:
     message_kind: dstat
+    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
@@ -48,6 +51,7 @@ filebeat.prospectors:
 
   fields:
     message_kind: gc
+    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
@@ -64,6 +68,7 @@ filebeat.prospectors:
 
   fields:
     message_kind: td
+    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
