@@ -1,7 +1,7 @@
 {
   "template": "logstash-*",
   "settings": {
-    "number_of_shards": 4,
+    "number_of_shards": 16,
     "number_of_replicas": 0,
     "index": {
       "codec": "best_compression",
@@ -51,6 +51,9 @@
           "type": "keyword",
           "include_in_all": false
         },
+        "aggregate_id" : {
+          "type" : "keyword"
+        },
         "app": {
           "properties": {
             "pause": {
@@ -86,6 +89,12 @@
             "id": {
               "type": "keyword"
             },
+            "lock_hold_time" : {
+              "type" : "long"
+            },
+            "lock_wait_time" : {
+              "type" : "long"
+            },
             "mark_begin_time": {
               "type": "long"
             },
@@ -97,6 +106,12 @@
             },
             "pages_write_time": {
               "type": "long"
+            },
+            "reason" : {
+              "type" : "keyword"
+            },
+            "throughput" : {
+              "type" : "long"
             },
             "total_time": {
               "type": "long"
@@ -469,10 +484,10 @@
         },
         "grid": {
           "properties": {
-            "host": {
+            "group" : {
               "type": "keyword"
             },
-            "group": {
+            "host" : {
               "type": "keyword"
             },
             "name": {
@@ -549,6 +564,37 @@
           "properties": {
             "size": {
               "type": "long"
+            }
+          }
+        },
+        "pme" : {
+          "properties" : {
+            "futures" : {
+              "properties" : {
+                "shown" : {
+                  "type" : "keyword"
+                },
+                "total" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "node" : {
+              "properties" : {
+                "id" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "top" : {
+              "properties" : {
+                "minor" : {
+                  "type" : "long"
+                },
+                "ver" : {
+                  "type" : "long"
+                }
+              }
             }
           }
         },
@@ -640,26 +686,34 @@
         },
         "top": {
           "properties": {
-            "snap": {
-              "properties": {
-                "clients": {
-                  "type": "long"
-                },
-                "cpu_count": {
-                  "type": "long"
-                },
-                "heap_size_gb": {
-                  "type": "float"
-                },
-                "servers": {
-                  "type": "long"
-                },
-                "ver": {
-                  "type": "long"
-                }
-              }
+            "clients": {
+              "type": "long"
+            },
+            "cpu_count": {
+              "type": "long"
+            },
+            "heap_size_gb": {
+              "type": "float"
+            },
+            "hosts" : {
+              "type" : "long"
+            },
+            "minor" : {
+              "type" : "long"
+            },
+            "nodes" : {
+              "type" : "long"
+            },
+            "servers": {
+              "type": "long"
+            },
+            "ver": {
+              "type": "long"
             }
           }
+        },
+        "ts" : {
+          "type" : "keyword"
         },
         "type": {
           "type": "keyword"
@@ -669,6 +723,9 @@
         },
         "wal": {
           "properties": {
+            "force_flush" : {
+              "type" : "keyword"
+            },
             "idx": {
               "type": "long"
             },
