@@ -2,15 +2,18 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - D:\docs\GG\FD-4575 Выход нод из кластера\2017-10-19\logs_rubin\*\server\*.log
+  - D:\docs\GG\FD-5401 Рассинхронизация данных на 10 узлах грида\171216_1715\*\opt\pprb\logs\eip-server\ignite*.log*
+  
+  encoding: UTF-8
+  harvester_limit: 100
 
   fields:
     message_kind: log
-    grid.group: "FD-4575-2017-10-19"
+    grid.group: "FD-5401-2017-12-16-17-15"
 
   fields_under_root: true
 
-  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?\\s+\\[?(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
+  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?(\\[|\\s+\\[?)(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
   multiline.negate: true
   multiline.match: after
   multiline.max_lines: 1000000
@@ -18,11 +21,14 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - D:\docs\GG\FD-4575 Выход нод из кластера\2017-10-19\logs_rubin\*\server\envelope-err.log
+  - D:\docs\GG\FD-5401 Рассинхронизация данных на 10 узлах грида\171216_1715\*\opt\pprb\logs\eip-server\log\envelope-err.log
+  
+  encoding: UTF-8
+  harvester_limit: 100
 
   fields:
     message_kind: log
-    grid.group: "FD-4575-2017-10-19"
+    grid.group: "FD-5401-2017-12-16-17-15"
 
   fields_under_root: true
 
@@ -34,21 +40,25 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - D:\docs\GG\FD-4575 Выход нод из кластера\2017-10-19\not_exists
+  - D:\not_exists
+
+  harvester_limit: 100
 
   fields:
     message_kind: dstat
-    grid.group: "FD-4575-2017-10-19"
+    grid.group: "FD-5401-2017-12-16-17-15"
 
   fields_under_root: true
 
 - input_type: log
   paths:
-  - D:\docs\GG\FD-4575 Выход нод из кластера\2017-10-19\logs_rubin\*\server\gc*.log*
+  - D:\docs\GG\FD-5401 Рассинхронизация данных на 10 узлах грида\171216_1715\*\opt\pprb\logs\eip-server\gc*.log*
+
+  harvester_limit: 100
 
   fields:
     message_kind: gc
-    grid.group: "FD-4575-2017-10-19"
+    grid.group: "FD-5401-2017-12-16-17-15"
 
   fields_under_root: true
 
@@ -60,11 +70,13 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - D:\docs\GG\FD-4575 Выход нод из кластера\2017-10-19\not_exists
+  - D:\not_exists
+
+  harvester_limit: 100
 
   fields:
     message_kind: td
-    grid.group: "FD-4575-2017-10-19"
+    grid.group: "FD-5401-2017-12-16-17-15"
 
   fields_under_root: true
 

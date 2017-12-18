@@ -11,6 +11,10 @@
 # https://www.elastic.co/guide/en/elasticsearch/reference/index.html
 #
 
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: 10gb
+cluster.routing.allocation.disk.watermark.high: 5gb
+
 # Indices
 
 indices.memory.index_buffer_size: 50%

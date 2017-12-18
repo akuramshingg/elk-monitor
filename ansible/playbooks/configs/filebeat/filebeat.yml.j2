@@ -3,6 +3,9 @@ filebeat.prospectors:
 - input_type: log
   paths:
   - {{ local_app_logs }}
+  
+  encoding: UTF-8
+  harvester_limit: 1000
 
   fields:
     message_kind: log
@@ -20,6 +23,9 @@ filebeat.prospectors:
 - input_type: log
   paths:
   - {{ local_err_logs }}
+  
+  encoding: UTF-8
+  harvester_limit: 1000
 
   fields:
     message_kind: log
@@ -38,6 +44,8 @@ filebeat.prospectors:
   paths:
   - {{ local_dstat_logs }}/{{ dstat_log_file }}
 
+  harvester_limit: 1000
+
   fields:
     message_kind: dstat
     grid.host: {{ ansible_hostname }}
@@ -48,6 +56,8 @@ filebeat.prospectors:
 - input_type: log
   paths:
   - {{ local_gc_logs }}
+
+  harvester_limit: 1000
 
   fields:
     message_kind: gc
@@ -65,6 +75,8 @@ filebeat.prospectors:
 - input_type: log
   paths:
   - {{ local_thread_dumps }}
+
+  harvester_limit: 1000
 
   fields:
     message_kind: td

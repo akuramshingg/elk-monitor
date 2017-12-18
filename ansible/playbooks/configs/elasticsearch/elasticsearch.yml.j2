@@ -1,3 +1,6 @@
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: 20gb
+cluster.routing.allocation.disk.watermark.high: 10gb
 indices.memory.index_buffer_size: 50%
 indices.memory.min_index_buffer_size: 1024mb
 cluster.name: {{ elastic_cluster_name }}
