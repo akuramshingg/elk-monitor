@@ -2,19 +2,21 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - {{ local_app_logs }}
+  {% for path in server_app_logs %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
   
   encoding: UTF-8
-  harvester_limit: 1000
+  harvester_limit: {{ concurrent_logs_limit }}
 
   fields:
     message_kind: log
-    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
+    grid.client: "false"
 
   fields_under_root: true
 
-  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?\\s+\\[?(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
+  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?(\\[|\\s+\\[?)(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
   multiline.negate: true
   multiline.match: after
   multiline.max_lines: 1000000
@@ -22,15 +24,62 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - {{ local_err_logs }}
+  {% for path in client_app_logs %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
   
   encoding: UTF-8
-  harvester_limit: 1000
+  harvester_limit: {{ concurrent_logs_limit }}
 
   fields:
     message_kind: log
-    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
+    grid.client: "true"
+
+  fields_under_root: true
+
+  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?(\\[|\\s+\\[?)(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  {% for path in server_err_logs %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
+  
+  encoding: UTF-8
+  harvester_limit: {{ concurrent_logs_limit }}
+
+  fields:
+    message_kind: log
+    grid.group: "{{ grid_group_name }}"
+    grid.client: "false"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s|^Caused by: "
+  multiline.negate: false
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+
+- input_type: log
+  paths:
+  {% for path in client_err_logs %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
+  
+  encoding: UTF-8
+  harvester_limit: {{ concurrent_logs_limit }}
+
+  fields:
+    message_kind: log
+    grid.group: "{{ grid_group_name }}"
+    grid.client: "true"
 
   fields_under_root: true
 
@@ -44,25 +93,26 @@ filebeat.prospectors:
   paths:
   - {{ local_dstat_logs }}/{{ dstat_log_file }}
 
-  harvester_limit: 1000
+  harvester_limit: {{ concurrent_logs_limit }}
 
   fields:
     message_kind: dstat
-    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
 
   fields_under_root: true
 
 - input_type: log
   paths:
-  - {{ local_gc_logs }}
+  {% for path in server_gc_logs %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
 
-  harvester_limit: 1000
+  harvester_limit: {{ concurrent_logs_limit }}
 
   fields:
     message_kind: gc
-    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
+    grid.client: "false"
 
   fields_under_root: true
 
@@ -74,14 +124,58 @@ filebeat.prospectors:
 
 - input_type: log
   paths:
-  - {{ local_thread_dumps }}
+  {% for path in client_gc_logs %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
 
-  harvester_limit: 1000
+  harvester_limit: {{ concurrent_logs_limit }}
+
+  fields:
+    message_kind: gc
+    grid.group: "{{ grid_group_name }}"
+    grid.client: "true"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\d"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  {% for path in server_thread_dumps %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
+
+  harvester_limit: {{ concurrent_logs_limit }}
 
   fields:
     message_kind: td
-    grid.host: {{ ansible_hostname }}
     grid.group: "{{ grid_group_name }}"
+    grid.client: "false"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s*$"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  {% for path in client_thread_dumps %}
+  - {{ path | regex_replace('HOSTNAME', ansible_hostname) }}
+  {% endfor %}
+
+  harvester_limit: {{ concurrent_logs_limit }}
+
+  fields:
+    message_kind: td
+    grid.group: "{{ grid_group_name }}"
+    grid.client: "true"
 
   fields_under_root: true
 

@@ -6,14 +6,33 @@
 
 [grid:vars]
 grid_group_name=cluster_name_or_issue_label
-
-path_app_logs=/var/logs/HOSTNAME/*envelope.log
-path_err_logs=/var/logs/HOSTNAME/*envelope-err.log
-path_gc_logs=/var/logs/HOSTNAME/*gc.log*
-path_dstat_logs=/var/logs/HOSTNAME
-path_thread_dumps=/var/logs/HOSTNAME/*.tdump
+concurrent_logs_limit=1000
+common_dstat_logs=/var/logs/HOSTNAME
 dstat_log_file=dstat.csv
 
+[server_app_logs]
+/var/logs/HOSTNAME/*envelope.log
+
+[client_app_logs]
+/var/logs/HOSTNAME/*envelope.log
+
+[server_err_logs]
+/var/logs/HOSTNAME/*envelope-err.log
+
+[client_err_logs]
+/var/logs/HOSTNAME/*envelope-err.log
+
+[server_gc_logs]
+/var/logs/HOSTNAME/*gc.log*
+
+[client_gc_logs]
+/var/logs/HOSTNAME/*gc.log*
+
+[server_thread_dumps]
+/var/logs/HOSTNAME/*.tdump
+
+[client_thread_dumps]
+/var/logs/HOSTNAME/*.tdump
 
 [elk]
 192.168.0.1 host_name=elk_server

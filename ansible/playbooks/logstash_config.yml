@@ -1,0 +1,46 @@
+# logstash_config.yml
+---
+- hosts: elk
+  user: root
+
+  tasks:
+
+  - name: Configure logstash - logstash.yml
+    template:
+      src=configs/logstash/logstash.yml.j2
+      dest=/etc/logstash/logstash.yml
+
+  - name: Configure logstash - jvm.options
+    copy:
+      src: configs/logstash/jvm.options
+      dest: /etc/logstash/jvm.options
+
+  - name: Configure logstash - create templates direcotry
+    file:
+      path=/etc/logstash/templates
+      state=directory
+
+  - name: Configure logstash - env-logs-index.json
+    copy:
+      src: configs/logstash/templates/env-logs-index.json
+      dest: /etc/logstash/templates/env-logs-index.json
+
+  - name: Configure logstash - create patterns direcotry
+    file:
+      path=/etc/logstash/patterns
+      state=directory
+
+  - name: Configure logstash - env-logs-patterns
+    copy:
+      src: configs/logstash/patterns/env-logs-patterns
+      dest: /etc/logstash/patterns/env-logs-patterns
+
+  - name: Configure logstash - env-logs-pipeline
+    template:
+      src=configs/logstash/conf.d/env-logs-pipeline.conf.j2
+      dest=/etc/logstash/conf.d/env-logs-pipeline.conf
+
+  - name: Restart logstash
+    service:
+      name: logstash
+      state: restarted

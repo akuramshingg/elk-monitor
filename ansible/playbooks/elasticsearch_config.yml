@@ -1,0 +1,21 @@
+# elasticsearch_config.yml
+---
+- hosts: elk
+  user: root
+
+  tasks:
+
+  - name: Configure elastic - elasticsearch.yml
+    template:
+      src=configs/elasticsearch/elasticsearch.yml.j2
+      dest=/etc/elasticsearch/elasticsearch.yml
+
+  - name: Configure elastic - jvm.options
+    copy:
+      src=configs/elasticsearch/jvm.options
+      dest=/etc/elasticsearch/jvm.options
+
+  - name: Restart elasticsearch
+    service:
+      name: elasticsearch
+      state: restarted

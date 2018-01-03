@@ -240,7 +240,7 @@ filter {
         # Calculating log timestamp from source start timestamp
         ruby {
             init => "@@source_start = {}"
-            code => "ss = @@source_start[event.get('source')]; if ss != nil then event.set('ss', ss) end"
+            code => "ss = @@source_start[event.get('source')]; if ss != nil then event.set('source_start', ss) end"
         }
         if ![ss] {
             grok {
@@ -254,22 +254,22 @@ filter {
                     locale => "en"
                     match => ["dt", "YYYYMMdd'-'HHmmss" ]
                     timezone => "Europe/Moscow"
-                    target => "ss"
+                    target => "source_start"
                     remove_field => [ "dt" ]
                     tag_on_failure => [ "ss_ts_failure" ]
                 }
             } else {
                 ruby {
-                    code => "event.set('ss', LogStash::Timestamp.now)"
+                    code => "event.set('source_start', LogStash::Timestamp.now)"
                 }
             }
             ruby {
-                code => "@@source_start[event.get('source')] = event.get('ss')"
+                code => "@@source_start[event.get('source')] = event.get('source_start')"
             }
         }
         if [ss] {
             ruby {
-                code => "event.timestamp = LogStash::Timestamp.at(event.get('ss').time.to_f + event.get('uptime'))"
+                code => "event.timestamp = LogStash::Timestamp.at(event.get('source_start').time.to_f + event.get('uptime'))"
             }
         }
     }
@@ -377,7 +377,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Checkpoint started \[checkpointId=%{UUID:[cp][id]}, startPtr=FileWALPointer \[idx=%{NONNEGINT:[wal][idx]:int}, fileOffset=%{NONNEGINT:[wal][off]:int}, len=%{NONNEGINT:[wal][len]:int}(, forceFlush=%{WORD:[wal][force_flush]})?\], checkpointLockWait=%{NONNEGINT:[cp][lock_wait_time]:int}ms, checkpointLockHoldTime=%{NONNEGINT:[cp][lock_hold_time]:int}ms, pages=%{NONNEGINT:[cp][pages]:int}, reason='%{WORD:[cp][reason]}'\]" }
+                match => { "message" => "^Checkpoint started \[checkpointId=%{UUID:[cp][id]}, startPtr=FileWALPointer \[idx=%{NONNEGINT:[wal][idx]:int}, fileOffset=%{NONNEGINT:[wal][off]:int}, len=%{NONNEGINT:[wal][len]:int}(, forceFlush=%{WORD:[wal][force_flush]})?\], checkpointLockWait=%{NONNEGINT:[cp][lock_wait_time]:int}ms, checkpointLockHoldTime=%{NONNEGINT:[cp][lock_hold_time]:int}ms, pages=%{NONNEGINT:[cp][pages]:int}, reason='%{DATA:[cp][reason]}'\]" }
                 add_field => { "message_type" => "cp_start" }
                 tag_on_failure => []
             }
@@ -387,7 +387,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Checkpoint finished \[cpId=%{UUID:[cp][id]}, pages=%{NONNEGINT:[cp][pages]:int}, markPos=FileWALPointer \[idx=%{NONNEGINT:[wal][idx]:int}, fileOffset=%{NONNEGINT:[wal][off]:int}, len=%{NONNEGINT:[wal][len]:int}(, forceFlush=%{WORD:[wal][force_flush]})?\], walSegmentsCleared=%{NONNEGINT:[wal][segs_cleared]:int}(, walHistorySize=%{NONNEGINT:[wal][hist_size]:int})?(, markBegin=%{NONNEGINT:[cp][mark_begin_time]:int}ms)?(, markDuration=%{NONNEGINT:[cp][mark_begin_time]:int}ms)?, pagesWrite=%{NONNEGINT:[cp][pages_write_time]:int}ms, fsync=%{NONNEGINT:[cp][fsync_time]:int}ms(, markEnd=%{NONNEGINT:[cp][mark_end_time]:int}ms)?, total=%{NONNEGINT:[cp][total_time]:int}ms\]" }
+                match => { "message" => "^Checkpoint finished \[cpId=%{UUID:[cp][id]}, pages=%{NONNEGINT:[cp][pages]:int}, markPos=FileWALPointer \[idx=%{NONNEGINT:[wal][idx]:int}, fileOffset=%{NONNEGINT:[wal][off]:int}, len=%{NONNEGINT:[wal][len]:int}(, forceFlush=%{WORD:[wal][force_flush]})?\](, walSegmentsCleared=%{NONNEGINT:[wal][segs_cleared]:int})?(, walHistorySize=%{NONNEGINT:[wal][hist_size]:int})?(, markBegin=%{NONNEGINT:[cp][mark_begin_time]:int}ms)?(, markDuration=%{NONNEGINT:[cp][mark_begin_time]:int}ms)?, pagesWrite=%{NONNEGINT:[cp][pages_write_time]:int}ms, fsync=%{NONNEGINT:[cp][fsync_time]:int}ms(, markEnd=%{NONNEGINT:[cp][mark_end_time]:int}ms)?, total=%{NONNEGINT:[cp][total_time]:int}ms\]" }
                 add_field => { "message_type" => "cp_finish" }
                 tag_on_failure => []
             }
@@ -402,8 +402,8 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Failed to wait for partition map exchange \[topVer=AffinityTopologyVersion \[topVer=%{NONNEGINT:[pme][top][ver]:int}, minorTopVer=%{NONNEGINT:[pme][top][minor]:int}\], node=%{UUID:[pme][node][id]}\]" }
-                add_field => { "message_type" => "pe_wait" }
+                match => { "message" => "^Skipping checkpoint.*?\[checkpointLockWait=%{NONNEGINT:[cp][lock_wait_time]:int}ms, checkpointLockHoldTime=%{NONNEGINT:[cp][lock_hold_time]:int}ms, reason='%{DATA:[cp][reason]}'\]" }
+                add_field => { "message_type" => "cp_skip" }
                 tag_on_failure => []
             }
         }
@@ -412,8 +412,8 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Failed to wait for partition release future \[topVer=AffinityTopologyVersion \[topVer=%{NONNEGINT:[prf][top][ver]:int}, minorTopVer=%{NONNEGINT:[prf][top][minor]:int}\], node=%{UUID:[prf][node][id]}\]" }
-                add_field => { "message_type" => "pe_wait" }
+                match => { "message" => "^Could not clear historyMap due to WAL reservation on cpEntry %{UUID:[cp][entry]}, history map size is %{NONNEGINT:[historyMap][size]:int}" }
+                add_field => { "message_type" => "cp_wal_reservation" }
                 tag_on_failure => []
             }
         }
@@ -422,8 +422,8 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Ready affinity version: AffinityTopologyVersion \[topVer=%{NONNEGINT:[top][ver]:int}, minorTopVer=%{NONNEGINT:[top][minor]:int}\]" }
-                add_field => { "message_type" => "pe_debug" }
+                match => { "message" => "^Checkpoint page buffer size is too big, setting to an adjusted cache size \[size=%{DATA:[mem][cp_buff][size]},  memPlc=%{DATA:[mem][policy][name]}\]" }
+                add_field => { "message_type" => "cp_page_buff_size" }
                 tag_on_failure => []
             }
         }
@@ -432,8 +432,8 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Last exchange future: " }
-                add_field => { "message_type" => "pe_debug" }
+                match => { "message" => "^Read checkpoint status" }
+                add_field => { "message_type" => "cp_status_read" }
                 tag_on_failure => []
             }
         }
@@ -442,8 +442,8 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Last %{NONNEGINT:[pme][futures][shown]} exchange futures \(total: %{NONNEGINT:[pme][futures][total]}\):" }
-                add_field => { "message_type" => "pe_debug" }
+                match => { "message" => "^Started page memory \[memoryAllocated=%{DATA:[mem][total][size]}, pages=%{NONNEGINT:[mem][total][pages]:int}, tableSize=%{DATA:[mem][table][size]}, checkpointBuffer=%{DATA:[mem][cp_buff][size]}\]" }
+                add_field => { "message_type" => "pgmem_started" }
                 tag_on_failure => []
             }
         }
@@ -452,8 +452,2004 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^(Pending transactions:|Pending explicit locks:|Pending cache futures:|Pending atomic cache futures:|Pending data streamer futures:|Pending transaction deadlock detection futures:)" }
-                add_field => { "message_type" => "pe_debug" }
+                match => { "message" => "^Checking memory state" }
+                add_field => { "message_type" => "pgmem_check" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished applying memory changes" }
+                add_field => { "message_type" => "pgmem_restored" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^IO error encountered while running WAL flush" }
+                match => { "message" => "^Failed to flush write-ahead log on cache stop" }
+                add_field => { "message_type" => "wal_flush_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to gracefully close WAL segment" }
+                add_field => { "message_type" => "wal_close_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Stopping WAL iteration due to an exception" }
+                add_field => { "message_type" => "wal_read_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Ignite node stopped in the middle of checkpoint" }
+                add_field => { "message_type" => "wal_cp_middle" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Found last checkpoint marker \[cpId=%{UUID:[cp][id]}," }
+                add_field => { "message_type" => "wal_cp_found" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Applying lost cache updates since last checkpoint record" }
+                add_field => { "message_type" => "wal_applying_lost_updates" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished applying WAL changes \[updatesApplied=%{NONNEGINT:[wal][apply][count]}, time=%{NONNEGINT:[wal][apply][time]}ms\]" }
+                add_field => { "message_type" => "wal_apply_lost_updates_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Started write-ahead log manager \[mode=%{WORD:[wal][mode]}\]" }
+                add_field => { "message_type" => "wal_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Resuming logging to WAL segment" }
+                add_field => { "message_type" => "wal_seg_resume" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^No partition mapping found for cache during snapshot restore" }
+                add_field => { "message_type" => "ss_restore_no_part_map" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Handling node left during snapshot operation, node = %{DISCO_NODE}" }
+                add_field => { "message_type" => "ss_node_left" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Can't read snapshot metadata for snapshot with id: %{NONNEGINT:[ss][id]:int}" }
+                add_field => { "message_type" => "ss_read_meta_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Error during snapshot operation" }
+                match => { "message" => "^Snapshot operation was locally failed" }
+                add_field => { "message_type" => "ss_op_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Error occur while %{WORD:[ss][op][type]} snapshot operation with id = %{NONNEGINT:[ss][id]:int}" }
+                add_field => { "message_type" => "ss_op_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Error while starting snapshot operation" }
+                add_field => { "message_type" => "ss_op_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failing snapshot operation future" }
+                add_field => { "message_type" => "ss_op_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Snapshot operation %{DATA:[ss][op][type]} started at %{DATA:[ss][start_date]} \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                match => { "message" => "^Snapshot worker started new snapshot operation: GridSnapshotOperationImpl{type=%{DATA:[ss][op][type]}, snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_op_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished snapshot operation %{DATA:[ss][op][type]} at %{DATA:[ss][start_date]} \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_op_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Resolved snapshot directory: %{DATA:[ss][dir]}" }
+                add_field => { "message_type" => "ss_dir_resolved" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Snapshot initialization completed \[topVer=%{TOP_VER}, time=%{NONNEGINT:[ss][init][time]}ms\]" }
+                add_field => { "message_type" => "ss_init_completed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received message with wrong id, msg = %{WORD:[ss][msg][type]}" }
+                add_field => { "message_type" => "ss_wrong_msg_id" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Cancel snapshot operation with msg" }
+                add_field => { "message_type" => "ss_op_cancel" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Create snapshot request received \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_create" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received request to collect snapshot list from cluster" }
+                match => { "message" => "^Collect list of snapshot schedules" }
+                match => { "message" => "^(%{WORD}\s+)*(GetSnapshotList|CollectSnapshotListJob|CollectSnapshotInfoJob|CollectSnapshotInfoTaskResult|CollectSnapshotDescriptorTask)" }
+                add_field => { "message_type" => "ss_collect" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Check snapshot request received \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_check" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Move snapshot request received \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_move" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Restore snapshot request received \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                match => { "message" => "^Received info from cluster for id = %{NONNEGINT:[ss][id]:int}," }
+                match => { "message" => "^Restoring all caches from affected cache groups: \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_restore" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received snapshot metadata from the cluster: SnapshotInfoImpl{snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_meta" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Snapshot schedule processor awaits for cluster activation" }
+                add_field => { "message_type" => "sss_wait_active" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Restart snapshot schedules" }
+                add_field => { "message_type" => "sss_restart" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to restart schedules" }
+                add_field => { "message_type" => "sss_restart_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Scheduled snapshot operation started" }
+                add_field => { "message_type" => "sss_op_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to run scheduled snapshot operation" }
+                add_field => { "message_type" => "sss_run_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Nothing to move" }
+                add_field => { "message_type" => "sss_move_nothing" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Found outdated snapshots to move" }
+                add_field => { "message_type" => "sss_move_outdated" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Start snapshot schedule: SnapshotSchedule \[id=%{UUID:[sss][id], name=%{DATA:[sss][name]}," }
+                add_field => { "message_type" => "sss_start" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Delete snapshot schedule: %{DATA:[sss][name]}" }
+                add_field => { "message_type" => "sss_delete" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Disable snapshot schedule: %{DATA:[sss][name]}" }
+                add_field => { "message_type" => "sss_disable" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^>>> Possible starvation in striped pool" }
+                add_field => { "message_type" => "long_running_stripe" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Still waiting for a concurrent write to complete" }
+                add_field => { "message_type" => "long_running_wal_write" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Found long running transaction" }
+                add_field => { "message_type" => "long_running_tx" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Found long running cache future" }
+                add_field => { "message_type" => "long_running_fut" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Query execution is too long" }
+                add_field => { "message_type" => "long_running_query" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Waited too long to acquire topology write lock" }
+                add_field => { "message_type" => "long_waiting_top_wlock" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to prepare DHT transaction: %{WORD:[tx][type]}" }
+                add_field => { "message_type" => "tx_prepare_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received finish request for completed transaction" }
+                add_field => { "message_type" => "tx_finish_completed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to execute local query.\norg.apache.ignite.cache.query.QueryCancelledException: The query was cancelled while executing" }
+                add_field => { "message_type" => "query_canceled" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Failed to run query" }
+                add_field => { "message_type" => "query_run_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to execute local query" }
+                add_field => { "message_type" => "query_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to send job request.*?\[node=%{DISCO_NODE}, taskName=%{DATA:[task][name]}," }
+                match => { "message" => "^Failed to send job request" }
+                add_field => { "message_type" => "job_send_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to reduce job results due to undeclared user exception \[task=%{DATA:task}, err=" }
+                match => { "message" => "^Failed to reduce job results" }
+                add_field => { "message_type" => "job_reduce_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to execute job" }
+                add_field => { "message_type" => "job_exec_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Will wait for all job responses from worker nodes before stopping grid" }
+                add_field => { "message_type" => "job_wait_response" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed over job to a new node" }
+                add_field => { "message_type" => "job_failover_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Job is being cancelled because master task node left grid" }
+                add_field => { "message_type" => "task_node_left" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to obtain remote job result policy for result from ComputeTask\.result" }
+                add_field => { "message_type" => "task_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to map task jobs to nodes.*?\[taskName=%{DATA:[task][name]}," }
+                match => { "message" => "^Failed to map task jobs to nodes" }
+                add_field => { "message_type" => "task_map_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to execute task \[name=%{DATA:[task][name]}, clientId=%{DATA:[node][id]}\]" }
+                match => { "message" => "^Failed to execute task" }
+                add_field => { "message_type" => "task_exec_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^\[%{TASK_TYPE:[task][type]}\]:" }
+                add_field => { "message_type" => "task_msg" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^\[%{JOB_TYPE:[job][type]}\]:" }
+                add_field => { "message_type" => "job_msg" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Task locally deployed: %{DATA:[task][name]}" }
+                match => { "message" => "^Task was deployed.*?: %{DATA:[task][name]}" }
+                add_field => { "message_type" => "task_deployed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Task was undeployed.*?\[cls=%{DATA:[task][name]}, alias=%{DATA:[task][alias]}\]" }
+                add_field => { "message_type" => "task_undeployed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Class locally deployed: %{DATA:[class][name]}" }
+                match => { "message" => "^Class was deployed.*?: %{DATA:[class][name]}" }
+                add_field => { "message_type" => "class_deployed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Class was undeployed.*?\[cls=%{DATA:[class][name]}, alias=%{DATA:[class][alias]}\]" }
+                add_field => { "message_type" => "class_undeployed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Removed undeployed class.*?sampleClsName=%{DATA:[class][name]}," }
+                match => { "message" => "^Removed undeployed class" }
+                add_field => { "message_type" => "class_removed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Rolling updates are not properly configured" }
+                add_field => { "message_type" => "config_diff_rolling" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Local java version is different from remote" }
+                add_field => { "message_type" => "config_diff_java" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Local node's value of 'java.net.preferIPv4Stack' system property differs from remote node's" }
+                add_field => { "message_type" => "config_diff_ip4stack" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Local node's build version differs from remote node's" }
+                add_field => { "message_type" => "config_diff_version" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Local node's binary configuration is not equal to remote node's binary configuration" }
+                add_field => { "message_type" => "config_diff_binary" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Closed client session due to exception" }
+                match => { "message" => "^Closing NIO session because of unhandled exception" }
+                add_field => { "message_type" => "client_failed_closed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to process client request" }
+                match => { "message" => "^Failed to handle request" }
+                add_field => { "message_type" => "client_request_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Client connector processor has started on TCP port %{NONNEGINT:[client][conn][port]:int}" }
+                add_field => { "message_type" => "client_conn_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Command protocol successfully started \[name=%{DATA:[client][srv][name]}, host=%{DATA:[client][srv][addr]}, port=%{NONNEGINT:[client][srv][port]:int}\]" }
+                add_field => { "message_type" => "client_srv_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Command protocol successfully stopped: %{DATA:[client][srv][name]}" }
+                add_field => { "message_type" => "client_srv_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Runnable tasks outlived thread pool executor service" }
+                add_field => { "message_type" => "runnable_outlived" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Runtime error caught during grid runnable execution" }
+                match => { "message" => "^Failed to execute runnable" }
+                add_field => { "message_type" => "runnable_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Future execution resulted in error: %{WORD:[fut][type]}" }
+                add_field => { "message_type" => "fut_exec_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to notify listener" }
+                add_field => { "message_type" => "fut_notify_list_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to execute compound future reducer" }
+                add_field => { "message_type" => "fut_exec_rdc__failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^%{FUTURE_TYPE:[fut][type]} waiting for response.*?node=%{UUID:[node][id]}.*?topVer=%{TOP_VER}" }
+                add_field => { "message_type" => "fut_waiting" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Unexpected exception during cache update" }
+                add_field => { "message_type" => "update_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Failed to update key on backup" }
+                add_field => { "message_type" => "update_backup_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Error when executing timeout callback" }
+                add_field => { "message_type" => "timeout_exec_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Set transaction invalidation flag to true due to error \[tx=%{WORD:[tx][type]}" }
+                add_field => { "message_type" => "tx_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Transaction was rolled back because the timeout is reached: %{WORD:[tx][type]}" }
+                add_field => { "message_type" => "tx_timeout_rolledback" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Heuristic transaction failure" }
+                add_field => { "message_type" => "tx_heuristic_failure" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to finish transaction \[commit=%{WORD:[tx][commit]}, tx=%{WORD:[tx][type]}" }
+                add_field => { "message_type" => "tx_finish_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to commit transaction, node is stopping \[tx=%{WORD:[tx][type]}" }
+                add_field => { "message_type" => "tx_commit_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Failed processing get request: %{WORD:[request][type]}" }
+                add_field => { "message_type" => "request_get_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Failed to acquire lock for request: %{WORD:[request][type]}" }
+                add_field => { "message_type" => "request_lock_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "Failed to send near lock response.*?\[txId=%{DATA:[tx][id]}, inTx=%{WORD:[inTx]}, node=%{UUID:[node][id]}, res=%{WORD:[resp][type]}" }
+                add_field => { "message_type" => "response_lock_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(<%{DATA:[cache][name]}> )?Failed to send get response to node.*?\[nodeId=%{UUID:[node][id]},req=%{WORD:[request][type]}" }
+                add_field => { "message_type" => "response_get_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to connect to any address from IP finder" }
+                add_field => { "message_type" => "disco_connect_any_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Node has not been connected to topology and will repeat join process" }
+                add_field => { "message_type" => "disco_not_connected" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to send message to next node \[msg=%{WORD:[msg][type]}" }
+                add_field => { "message_type" => "disco_msg_send_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Socket write has timed out.*?\[failureDetectionTimeout=%{NONNEGINT:failureDetectionTimeout:int}, rmtAddr=%{DATA:[node][addr]}, rmtPort=%{NONNEGINT:[node][port]:int}, sockTimeout=%{NONNEGINT:[disco][sock_timeout]:int}\]" }
+                add_field => { "message_type" => "disco_write_timeout" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failing client node due to not receiving metrics updates from client node within.*?\[timeout=%{NONNEGINT:[disco][client_timeout]:int}, node=%{DISCO_NODE}\]" }
+                add_field => { "message_type" => "disco_client_timeout" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Local node has detected failed nodes and started cluster-wide procedure" }
+                add_field => { "message_type" => "disco_detect_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Successfully bound to TCP port \[port=%{NONNEGINT:[disco][srv][port]:int}, localHost=%{DATA:[disco][srv][addr]}, locNodeId=%{UUID:[node][id]}\]" }
+                add_field => { "message_type" => "disco_srv_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^TCP discovery accepted incoming connection \[rmtAddr=%{DATA:[disco][addr]}, rmtPort=%{NONNEGINT:[disco][port]:int}\]" }
+                add_field => { "message_type" => "disco_srv_accepted" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^TCP discovery spawning a new thread for connection \[rmtAddr=%{DATA:[disco][addr]}, rmtPort=%{NONNEGINT:[disco][port]:int}\]" }
+                add_field => { "message_type" => "disco_conn_thread_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Started serving remote node connection \[rmtAddr=%{DATA:[disco][addr]}, rmtPort=%{NONNEGINT:[disco][port]:int}\]" }
+                add_field => { "message_type" => "disco_conn_serving_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Started serving remote node connection \[rmtAddr=%{DATA:[disco][addr]}, rmtPort=%{NONNEGINT:[disco][port]:int}\]" }
+                add_field => { "message_type" => "disco_conn_serving_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished serving remote node connection \[rmtAddr=%{DATA:[disco][addr]}, rmtPort=%{NONNEGINT:[disco][port]:int}" }
+                add_field => { "message_type" => "disco_conn_serving_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Communication SPI session write timed out.*?\[remoteAddr=%{DATA:[node][addr]}, writeTimeout=%{NONNEGINT:[tcp][write_timeout]:int}\]" }
+                add_field => { "message_type" => "tcp_write_timeout" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to connect to a remote node.*?\[addrs=\[%{DATA:[node][addr]}\]\]" }
+                add_field => { "message_type" => "tcp_conn_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received message without registered handler.*?\[msg=%{WORD:[msg][type]}" }
+                add_field => { "message_type" => "tcp_msg_no_handler" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Close incoming connection, unknown node \[nodeId=%{UUID:[node][id]}" }
+                add_field => { "message_type" => "tcp_unknown_node" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to read message" }
+                add_field => { "message_type" => "tcp_msg_read_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to process selector key" }
+                add_field => { "message_type" => "tcp_failed_close" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Connect timed out.*?\[addr=%{DATA:[node][addr]}, connTimeout=%{NONNEGINT:[tcp][conn_timeout]:int}\]" }
+                add_field => { "message_type" => "tcp_conn_timeout" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Handshake timedout.*?\[node=%{UUID:[node][id]}, timeout=%{NONNEGINT:[tcp][conn_timeout]:int}, maxConnTimeout=%{NONNEGINT:[tcp][max_conn_timeout]:int}, attempt=%{NONNEGINT:[tcp][attempts]:int}, reconCnt=%{NONNEGINT:[tcp][max_attempts]:int}, err=%{DATA:error}, addr=%{DATA:[node][addr]}\]" }
+                add_field => { "message_type" => "tcp_handshake_timeout" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Successfully bound communication NIO server to TCP port \[port=%{NONNEGINT:[tcp][srv][port]:int}, locHost=%{DATA:[tcp][srv][addr]}," }
+                add_field => { "message_type" => "tcp_srv_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Accepted incoming communication connection \[locAddr=%{DATA:[tcp][loc][addr]}, rmtAddr=%{DATA:[tcp][rmt][addr]}\]" }
+                add_field => { "message_type" => "tcp_srv_accepted" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Established outgoing communication connection \[locAddr=%{DATA:[tcp][loc][addr]}, rmtAddr=%{DATA:[tcp][rmt][addr]}\]" }
+                add_field => { "message_type" => "tcp_conn_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received incoming connection from remote node while connecting to this node, rejecting \[locNode=%{UUID:[loc][node][id]}, locNodeOrder=%{NONNEGINT:[loc][node][order]:int}, rmtNode=%{UUID:[rmt][node][id]}, rmtNodeOrder=%{NONNEGINT:[rmt][node][order]:int}\]" }
+                match => { "message" => "^Received incoming connection when already connected to this node, rejecting \[locNode=%{UUID:[loc][node][id]}, rmtNode=%{UUID:[rmt][node][id]}\]" }
+                add_field => { "message_type" => "tcp_cross_conn_rejected" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed processing message \[senderId=%{UUID:[node][id]}, msg=%{WORD:[msg][type]}" }
+                match => { "message" => "^Failed to process message \[senderId=%{UUID:[node][id]}, messageType=%{DATA:[msg][type]}\]" }
+                add_field => { "message_type" => "msg_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to send message" }
+                match => { "message" => "^Failed to send error message" }
+                add_field => { "message_type" => "msg_send_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to activate node components \[nodeId=%{UUID:[node][id]}, client=%{WORD:[node][client]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "activate_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Started state transition: %{WORD:[cluster][active]}" }
+                add_field => { "message_type" => "cluster_state_change_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received state change finish message: %{WORD:[cluster][active]}" }
+                add_field => { "message_type" => "cluster_state_change_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Start activation process \[nodeId=%{UUID:[node][id]}, client=%{WORD:[node][client]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "cluster_activate_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Successfully performed final activation steps \[nodeId=%{UUID:[node][id]}, client=%{WORD:[node][client]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "cluster_activate_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Start deactivation process \[nodeId=%{UUID:[node][id]}, client=%{WORD:[node][client]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "cluster_deactivate_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Successfully deactivated data structures, services and caches \[nodeId=%{UUID:[node][id]}, client=%{WORD:[node][client]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "cluster_deactivate_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to wait for completion of partition map exchange" }
+                add_field => { "message_type" => "exch_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Started exchange init \[topVer=%{TOP_VER}, crd=%{WORD:[node][crd]}, evt=%{WORD:[evt][type]}, evtNode=%{UUID:[node][id], customEvt=%{WORD:[msg][type]}" }
+                add_field => { "message_type" => "exch_init_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished exchange init \[topVer=%{TOP_VER}, crd=%{WORD:[node][crd]}\]" }
+                add_field => { "message_type" => "exch_init_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^finishExchangeOnCoordinator \[topVer=%{TOP_VER:initVer}, resVer=%{TOP_VER:resVer}\]" }
+                add_field => { "message_type" => "exch_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finish exchange future \[startVer=%{TOP_VER:startVer}, resVer=%{TOP_VER:resVer}," }
+                add_field => { "message_type" => "exch_fut_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Send restore state response \[node=%{UUID:[node][id]}, exchVer=%{TOP_VER}," }
+                add_field => { "message_type" => "exch_send_restore_response" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Coordinator changed, send partitions to new coordinator \[ver=%{TOP_VER}, crd=%{UUID:[crd][node][id]}, newCrd=%{UUID:[new][crd][id]}\]" }
+                match => { "message" => "^Coordinator failed, node is new coordinator \[ver=%{TOP_VER}, prev=%{UUID:[old][crd][id]}\]" }
+                match => { "message" => "^Init new coordinator.*?\[node=%{UUID:[new][crd][id]}" }
+                match => { "message" => "^Try restore exchange result" }
+                match => { "message" => "^New coordinator restore state finished \[ver=%{TOP_VER}" }
+                match => { "message" => "^Received partitions request, change coordinator \[oldCrd=%{UUID:[old][crd][id]}, newCrd=%{UUID:[new][crd][id]}\]" }
+                add_field => { "message_type" => "exch_crd_changed" }
+                tag_on_failure => []
+            }
+
+            if [message_type] == "exch_crd_changed" {
+                mutate {
+                    replace => { "level" => "WARN" }
+                }
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Waiting for coordinator initialization \[node=%{UUID:[node][id]}, nodeOrder=%{NONNEGINT:[node][order]:int}, ver=%{TOP_VER}\]" }
+                add_field => { "message_type" => "exch_wait_crd_init" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Process pending message on coordinator \[node=%{UUID:[node][id]}, ver=%{TOP_VER:curVer}, resVer=%{TOP_VER:resVer}\]" }
+                add_field => { "message_type" => "exch_crd_pending_msg" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Coordinator received single message \[ver=%{TOP_VER}, node=%{UUID:[node][id]}, allReceived=%{WORD:[msg][all]}" }
+                match => { "message" => "^Received single message, already done \[ver=%{TOP_VER}, node=%{UUID:[node][id]}" }
+                add_field => { "message_type" => "exch_msg_received" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Coordinator received all messages, try merge \[ver=%{TOP_VER}\]" }
+                add_field => { "message_type" => "exch_msg_all_received" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Merge exchange future \[curFut=%{TOP_VER:curVer}, mergedFut=%{TOP_VER:mergedVer}, evt=%{WORD:[evt][type]}, evtNode=%{UUID:[node][id]}, evtNodeClient=%{WORD:[node][client]}\]" }
+                add_field => { "message_type" => "exch_fut_merge" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received full message, will finish exchange \[node=%{UUID:[node][id]}, resVer=%{TOP_VER:resVer}\]" }
+                match => { "message" => "^Received full message, need merge \[curFut=%{TOP_VER:curVer}, resVer=%{TOP_VER:resVer}\]" }
+                add_field => { "message_type" => "exch_full_msg_received" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to send partitions full message \[node=%{DISCO_NODE}" }
+                add_field => { "message_type" => "exch_full_msg_send_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Ignore full message, future is done" }
+                add_field => { "message_type" => "exch_full_msg_ignored" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Skipping rebalancing.*?\[top=%{TOP_VER}, evt=%{WORD:[evt][type]}, node=%{UUID:[node][id]}\]" }
+                add_field => { "message_type" => "reb_skip" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Rebalancing scheduled" }
+                add_field => { "message_type" => "reb_sched" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Cancelled rebalancing from all nodes \[topology=%{TOP_VER}" }
+                add_field => { "message_type" => "reb_cancel" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Starting rebalancing \[mode=%{WORD:[reb][mode]}, fromNode=%{UUID:[node][id]}, partitionsCount=%{NONNEGINT:[part][count]:int}, topology=%{TOP_VER}, updateSeq=%{NONNEGINT:updateSeq:int}\]" }
+                add_field => { "message_type" => "reb_starting" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Rebalancing started \[top=%{TOP_VER}, evt=%{WORD:[evt][type]}, node=%{UUID:[node][id]}\]" }
+                add_field => { "message_type" => "reb_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Completed rebalancing \[fromNode=%{UUID:[node][id]}, topology=%{TOP_VER}, time=%{NONNEGINT:[reb][time]:int} ms\]" }
+                add_field => { "message_type" => "reb_completed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Completed \(final\) rebalancing \[fromNode=%{UUID:[node][id]}, topology=%{TOP_VER}, time=%{NONNEGINT:[reb][time]:int} ms\]" }
+                add_field => { "message_type" => "reb_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Stale update for single partition map update" }
+                add_field => { "message_type" => "top_stale_part_map" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Stale version for full partition map update message" }
+                add_field => { "message_type" => "top_stale_full_part_map" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Requested topology version does not match calculated diff, will require full iteration tocalculate mapping" }
+                add_field => { "message_type" => "top_calc_diff_not_match" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Added node failed message for node from failed nodes list: TcpDiscoveryNodeFailedMessage \[failedNodeId=%{UUID:[node][id]}," }
+                add_field => { "message_type" => "top_node_failing" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Node FAILED: %{DISCO_NODE}" }
+                add_field => { "message_type" => "top_node_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Added new node to topology: %{DISCO_NODE}" }
+                add_field => { "message_type" => "top_node_added" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Node left topology: %{DISCO_NODE}" }
+                add_field => { "message_type" => "top_node_left" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^No verification for local node leave has been received from coordinator" }
+                add_field => { "message_type" => "top_node_leave" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^>>> ver\. %{DATA:[ignite][ver]#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}" }
+                add_field => { "message_type" => "top_node_starting" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^>>> \+-+\+\n>>> Ignite ver. %{DATA:[ignite][ver]#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}\n>>> \+-+\+\n>>> OS name: %{DATA:[node][os][user]}\n>>> CPU(s): %{NONNEGINT:[node][cpu][count]:int}\n>>> Heap: %{DATA:[node][heap][size]}\n>>> VM name: %{DATA:[node][jvm][name]}\n>>> Ignite instance name: %{WORD:[node][name]}\n>>> Local node \[ID=%{UUID:[node][id]}, order=%{NONNEGINT:[node][order]:int}, clientMode=%{WORD:[node][client]}\]\n>>> Local node addresses: \[%{DATA:[node][addrs]}\]\n>>> Local ports: %{GREEDYDATA:[node][ports]}" }
+                add_field => { "message_type" => "top_node_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^OS user: %{DATA:[node][os][user]}" }
+                match => { "message" => "^OS: %{DATA:[node][os][name]}" }
+                match => { "message" => "^Config URL: %{DATA:[node][cfg][url]}" }
+                match => { "message" => "^Daemon mode: %{WORD:[node][daemon]}" }
+                match => { "message" => "^PID: %{NONNEGINT:[node][pid]:int}" }
+                match => { "message" => "^Language runtime: %{DATA:[node][jvm][lang]}" }
+                match => { "message" => "^VM information: %{DATA:[node][jvm][ver]}" }
+                match => { "message" => "^VM arguments: %{DATA:[node][jvm][args]}" }
+                match => { "message" => "^VM total memory: %{DATA:[node][jvm][mem][total]}" }
+                match => { "message" => "^IGNITE_HOME=%{DATA:[node][home_dir]}" }
+                match => { "message" => "^Resolved directory for serialized binary metadata: %{DATA:[node][bin_meta_dir]}" }
+                match => { "message" => "^Resolved write ahead log work directory: %{DATA:[node][wal_dir]}" }
+                match => { "message" => "^Resolved page store work directory: %{DATA:[node][page_store_dir]}" }
+                match => { "message" => "^Resolved write ahead log archive directory: %{DATA:[node][wal_archive_dir]}" }
+                match => { "message" => "^Local node user attribute \[%{DATA:[node][attr]}\]" }
+                match => { "message" => "^Remote Management %{DATA:[node][remote_mgmt]}" }
+                match => { "message" => "^Configured caches %{DATA:[node][cfg][caches]}" }
+                match => { "message" => "^System cache's MemoryPolicy size is configured to %{NONNEGINT:[node][mem][sys_cache_size]:int} MB" }
+                match => { "message" => "^Security status " }
+                match => { "message" => "^Non-loopback local IPs: " }
+                match => { "message" => "^Enabled local MACs: " }
+                match => { "message" => "^Checkpoints are disabled" }
+                match => { "message" => "^Collision resolution is disabled" }
+                match => { "message" => "^Failure detection timeout will be ignored" }
+                match => { "message" => "^Message queue limit is set to 0" }
+                match => { "message" => "^Peer class loading is enabled" }
+                match => { "message" => "^Rolling updates are disabled" }
+                match => { "message" => "^User or internal attribute has the same name as environment or system property and will take precedence" }
+                match => { "message" => "^Performance suggestions for grid" }
+                match => { "message" => "^Refer to this page for more performance suggestions: " }
+                match => { "message" => "^To disable, set -DIGNITE_PERFORMANCE_SUGGESTIONS_DISABLED=true" }
+                match => { "message" => "^\^-- Disable rolling update" }
+                match => { "message" => "^\^-- Reduce pages swapping ratio" }
+                match => { "message" => "^\^-- Set max direct memory size" }
+                match => { "message" => "^\^-- Disable assertions" }
+                match => { "message" => "^\^-- Disable rolling updates" }
+                match => { "message" => "^\^-- Reduce pages swapping ratio" }
+                match => { "message" => "^\^-- Decrease number of backups" }
+                match => { "message" => "^To start Console Management & Monitoring run" }
+                match => { "message" => "^3-rd party licenses can be found at" }
+                match => { "message" => "^\^-- 2017 Copyright\(C\) GridGain Systems" }
+                match => { "message" => "^Configured plugins:" }
+                match => { "message" => "^\^-- GridGain %{DATA:[gg][ver]#%{DATA:[gg][date]}-sha1:%{DATA:[gg][hash]}" }
+                add_field => { "message_type" => "node_start" }
+                remove_field => [ "level" ]
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "BaselineTopology\[id=%{NONNEGINT:[baseline][id]}\]" }
+                add_field => { "message_type" => "top_baseline" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Started cache \[name=%{DATA:[cache][name]}(, id=%{INT:[cache][id]})?(, group=%{DATA:[cache][group]})?, memoryPolicyName=%{DATA:[mem][policy][name]}, mode=%{WORD:[cache][mode]}, atomicity=%{WORD:[cache][atomicity]}(, backups=%{INT:[cache][backups]})?\]" }
+                match => { "message" => "^Started cache" }
+                add_field => { "message_type" => "cache_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Stopped cache \[cacheName=%{DATA:[cache][name]}, group=%{DATA:[cache][group]}\]" }
+                match => { "message" => "^Stopped cache" }
+                add_field => { "message_type" => "cache_stopped" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Successfully activated caches \[nodeId=%{UUID:[node][id]}, client=%{WORD:[node][client]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "caches_activated" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Caches cleaning utility is started from node: \[%{UUID:[node][id]}," }
+                add_field => { "message_type" => "cache_clean" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to send event notification to node: %{UUID:[node][id]}" }
+                add_field => { "message_type" => "evt_send_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to ping node \(status check will be initiated\): %{UUID:[node][id]}" }
+                add_field => { "message_type" => "ping_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Received ping request from the remote node \[rmtNodeId=%{UUID:[node][id]}, rmtAddr=%{DATA:[node][addr]}, rmtPort=%{NONNEGINT:[node][port]:int}\]" }
+                add_field => { "message_type" => "ping_request" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished writing ping response \[rmtNodeId=%{UUID:[node][id]}, rmtAddr=%{DATA:[node][addr]}, rmtPort=%{NONNEGINT:[node][port]:int}\]" }
+                add_field => { "message_type" => "ping_response" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Pinging node: %{UUID:[node][id]}" }
+                add_field => { "message_type" => "ping_started" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished node ping \[nodeId=%{UUID:[node][id]}, res=%{WORD:[ping][result]}, time=%{NONNEGINT:[ping][time]:int}ms\]" }
+                add_field => { "message_type" => "ping_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Nodes started on local machine require more than.*?\[required=%{NONNEGINT:[mem][required]:int}MB, available=%{NONNEGINT:[mem][available]:int}MB\]" }
+                add_field => { "message_type" => "mem_required" }
+                remove_field => [ "level" ] # will be set to CONFIG
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to wait for partition map exchange \[topVer=%{TOP_VER}, node=%{UUID:[node][id]}\]" }
+                add_field => { "message_type" => "exch_wait" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Still waiting for initial partition map exchange.*?\[evtNode=%{DISCO_NODE}, topVer=%{INT:[top][ver]:int},.*?type=%{WORD:[evt][type]}, tstamp=" }
+                add_field => { "message_type" => "exch_wait" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to wait for initial partition map exchange" }
+                add_field => { "message_type" => "exch_wait" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to wait for partition release future \[topVer=%{TOP_VER}, node=%{UUID:[node][id]}\]" }
+                add_field => { "message_type" => "exch_wait" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Ready affinity version: %{TOP_VER}" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^(First|Last) exchange future: " }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^First %{NONNEGINT:[pending][affinity][shown]} pending affinity ready futures \[total=%{NONNEGINT:[pending][affinity][total]}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^First %{NONNEGINT:[pending][affinity][shown]} pending affinity ready futures \[grp=%{DATA:[cache][group]}, total=%{NONNEGINT:[pending][affinity][total]}, lastVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^First %{NONNEGINT:[pending][exchange][shown]} pending exchange futures \[total=%{NONNEGINT:[pending][exchange][total]}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Last %{NONNEGINT:[exchange][shown]} exchange futures \(total: %{NONNEGINT:[exchange][total]}\):" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Partition release future: PartitionReleaseFuture \[topVer=%{TOP_VER}" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Failed to send diagnostic message" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Still waiting for partition eviction" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Partition has been scheduled for rebalancing due to outdated update counter \[nodeId=%{UUID:[node][id]}, cacheOrGroupName=%{DATA:[cache][name]}, partId=%{NONNEGINT:[part][id]:int}, haveHistory=%{WORD:[part][history]}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished waiting for partition release future \[topVer=%{TOP_VER}, waitTime=%{NONNEGINT:[part][wait_time]:int}ms," }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Pending cache messages waiting for exchange \[readyVer=%{TOP_VER:readyVer}, discoVer=%{INT:[disco][ver]:int}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Exchange future on coordinator waiting for server response \[node=%{UUID:[node][id]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Exchange future waiting for coordinator response \[crd=%{UUID:[node][id]}, topVer=%{TOP_VER}\]" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Pending transactions:" }
+                match => { "message" => "^Pending explicit locks:" }
+                match => { "message" => "^Pending cache futures:" }
+                match => { "message" => "^Pending atomic cache futures:" }
+                match => { "message" => "^Pending data streamer futures:" }
+                match => { "message" => "^Pending transaction deadlock detection futures:" }
+                match => { "message" => "^Dumping pending objects that might be the cause:" }
+                match => { "message" => "^Rebalancing supplier reserved following partitions:" }
+                add_field => { "message_type" => "exch_debug" }
                 tag_on_failure => []
             }
         }
@@ -463,12 +2459,22 @@ filter {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^>>>\s+\w+\s+\[" }
-                add_field => { "message_type" => "pe_debug" }
+                add_field => { "message_type" => "exch_debug" }
                 tag_on_failure => []
             }
         }
 
-        if [message_type] in [ "pe_wait", "pe_debug"] {
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^>>>\s+\[txVer=" }
+                add_field => { "message_type" => "exch_debug" }
+                tag_on_failure => []
+            }
+        }
+
+        if [message_type] in [ "exch_wait", "exch_debug"] {
 
             ruby {
                 init => "require 'securerandom'"
@@ -482,18 +2488,18 @@ filter {
             }
         }
 
-        if [message_type] == "pe_wait" {
+        if [message_type] == "exch_wait" {
 
             aggregate {
                 task_id => "%{aggregate_id}"
                 inactivity_timeout => 10
                 push_map_as_event_on_timeout => true
                 code => "map.merge!(event.to_hash)"
-                timeout_code => "if event.include?('message_type') then event.set('level', 'WARN'); event.set('message_type', 'pe_aggregate'); m = event.get('message'); dm = {}; event.to_hash.each { |k, v| if k.start_with?('debug_message_') then off = k['debug_message_'.length..-1].to_i; dm[off] = v; end }; dm.sort.map { |off, msg| m += 10.chr + 10.chr + msg; event.remove('debug_message_' + off.to_s) }; event.set('message', m); else event.cancel(); end"
+                timeout_code => "if event.include?('message_type') then event.set('level', 'WARN'); event.set('message_type', 'exch_aggr'); m = event.get('message'); dm = {}; event.to_hash.each { |k, v| if k.start_with?('debug_message_') then off = k['debug_message_'.length..-1].to_i; dm[off] = v; end }; dm.sort.map { |off, msg| m += 10.chr + 10.chr + msg; event.remove('debug_message_' + off.to_s) }; event.set('message', m); else event.cancel(); end"
             }
         }
 
-        if [message_type] == "pe_debug" {
+        if [message_type] == "exch_debug" {
 
             aggregate {
                 task_id => "%{aggregate_id}"
@@ -501,19 +2507,45 @@ filter {
             }
         }
 
-        # Fix log level to CONFIG
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^SLF4J:" }
+                match => { "message" => "^Failed to resolve default logging config file" }
+                add_field => { "message_type" => "logger" }
+                tag_on_failure => []
+            }
+
+            if [message_type] == "logger" {
+                mutate {
+                    replace => { "level" => "CONFIG" }
+                }
+            }
+        }
+
+        # Fix log message type
+        if ![message_type] {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
-            match => { "message" => "^Checkpoints are disabled" }
-            match => { "message" => "^Collision resolution is disabled" }
-            match => { "message" => "^Failure detection timeout will be ignored" }
-            match => { "message" => "^Message queue limit is set to 0" }
-            match => { "message" => "^Peer class loading is enabled" }
-            match => { "message" => "^Rolling updates are disabled" }
-            match => { "message" => "^User or internal attribute has the same name as environment or system property and will take precedence" }
-            remove_field => [ "level" ]
+                match => { "message" => "^Fail" }
+                match => { "message" => "Exception" }
+                add_field => { "message_type" => "unknown_failure" }
             tag_on_failure => []
+        }
+        }
+        if ![message_type] {
+            mutate {
+                add_field => { "message_type" => "unknown_log" }
+            }
+        }
+
+        # Fix log level
+        if [message_type] =~ /fail|error/ and [level] == "INFO" {
+            mutate {
+                replace => { "level" => "ERROR" }
+            }
         }
         if ![level] {
             mutate {
@@ -918,6 +2950,18 @@ filter {
             match => { "source" => "%{IP:[grid][host]}" }
             remove_tag => [ "grid_host_failure" ]
             tag_on_failure => [ "grid_host_failure" ]
+        }
+    }
+    
+    # Append prefix for server or client
+    if [grid][host] and ([grid][client] == "false") {
+        mutate {
+            add_field => { "[grid][label]" => "%{[grid][host]} server" }
+        }
+    }
+    if [grid][host] and ([grid][client] == "true") {
+        mutate {
+            add_field => { "[grid][label]" => "%{[grid][host]} client" }
         }
     }
     
