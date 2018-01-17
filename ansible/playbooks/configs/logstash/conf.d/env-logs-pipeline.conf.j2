@@ -316,7 +316,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "[grid][name]" => "^%{DATA:[grid][name]}\%(?<grid.host>grid\d+)$" }
+                match => { "[grid][name]" => "^%{DATA:[grid][name]}\%%{GRID_HOST:[grid][host]}$" }
                 remove_tag => [ "grid_host_failure" ]
                 tag_on_failure => [ "grid_host_failure" ]
             }
@@ -350,7 +350,7 @@ filter {
         }
     }
         
-	# Parsing default log specific messages
+    # Parsing default log specific messages
     if [message_kind] == "log" {
 
         if ![message_type] {
@@ -707,7 +707,7 @@ filter {
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Received request to collect snapshot list from cluster" }
                 match => { "message" => "^Collect list of snapshot schedules" }
-                match => { "message" => "^(%{WORD}\s+)*(GetSnapshotList|CollectSnapshotListJob|CollectSnapshotInfoJob|CollectSnapshotInfoTaskResult|CollectSnapshotDescriptorTask)" }
+                match => { "message" => "^(%{WORD}\s+)*(GetSnapshotList|CollectSnasphotListJob|CollectSnapshotListJob|CollectSnapshotInfoJob|CollectSnapshotInfoTaskResult|CollectSnapshotDescriptorTask)" }
                 add_field => { "message_type" => "ss_collect" }
                 tag_on_failure => []
             }
@@ -737,6 +737,16 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Delete snapshot request received \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                add_field => { "message_type" => "ss_move" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Restore snapshot request received \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
                 match => { "message" => "^Received info from cluster for id = %{NONNEGINT:[ss][id]:int}," }
                 match => { "message" => "^Restoring all caches from affected cache groups: \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
@@ -751,6 +761,16 @@ filter {
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Received snapshot metadata from the cluster: SnapshotInfoImpl{snapshotId=%{NONNEGINT:[ss][id]:int}," }
                 add_field => { "message_type" => "ss_meta" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Will not include SQL indexes to snapshot" }
+                add_field => { "message_type" => "ss_idx_not_include" }
                 tag_on_failure => []
             }
         }
@@ -1290,6 +1310,7 @@ filter {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^%{FUTURE_TYPE:[fut][type]} waiting for response.*?node=%{UUID:[node][id]}.*?topVer=%{TOP_VER}" }
+                match => { "message" => "^%{FUTURE_TYPE:[fut][type]} waiting for response" }
                 add_field => { "message_type" => "fut_waiting" }
                 tag_on_failure => []
             }
@@ -1331,6 +1352,27 @@ filter {
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Set transaction invalidation flag to true due to error \[tx=%{WORD:[tx][type]}" }
                 add_field => { "message_type" => "tx_failed" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "Cache transaction timed out: %{WORD:[tx][type]}" }
+                add_field => { "message_type" => "tx_timeout" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "Failed to acquire lock within provided timeout for transaction \[timeout=%{NONNEGINT:[tx][timeout]}, tx=%{DATA:[tx][type]}\]" }
+                match => { "message" => "Failed to acquire lock within provided timeout for transaction" }
+                add_field => { "message_type" => "tx_lock_timeout" }
                 tag_on_failure => []
             }
         }
@@ -1875,6 +1917,7 @@ filter {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Merge exchange future \[curFut=%{TOP_VER:curVer}, mergedFut=%{TOP_VER:mergedVer}, evt=%{WORD:[evt][type]}, evtNode=%{UUID:[node][id]}, evtNodeClient=%{WORD:[node][client]}\]" }
+                match => { "message" => "^Merge exchange future on finish \[curFut=%{TOP_VER:curVer}, mergedFut=%{TOP_VER:mergedVer}, evt=%{WORD:[evt][type]}, evtNode=%{UUID:[node][id]}, evtNodeClient=%{WORD:[node][client]}\]" }
                 add_field => { "message_type" => "exch_fut_merge" }
                 tag_on_failure => []
             }
@@ -2075,9 +2118,104 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^>>> \+-+\+\n>>> Ignite ver. %{DATA:[ignite][ver]#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}\n>>> \+-+\+\n>>> OS name: %{DATA:[node][os][user]}\n>>> CPU(s): %{NONNEGINT:[node][cpu][count]:int}\n>>> Heap: %{DATA:[node][heap][size]}\n>>> VM name: %{DATA:[node][jvm][name]}\n>>> Ignite instance name: %{WORD:[node][name]}\n>>> Local node \[ID=%{UUID:[node][id]}, order=%{NONNEGINT:[node][order]:int}, clientMode=%{WORD:[node][client]}\]\n>>> Local node addresses: \[%{DATA:[node][addrs]}\]\n>>> Local ports: %{GREEDYDATA:[node][ports]}" }
-                add_field => { "message_type" => "top_node_started" }
+                match => { "message" => "^>>>\s*\+\-+\+" }
+                add_field => { "message_type" => "top_node_start_stop" }
                 tag_on_failure => []
+            }
+
+            if [message_type] {
+                mutate {
+                    remove_field => [ "message_type" ]
+                }
+
+                if ![message_type] {
+                    grok {
+                        patterns_dir => ["/etc/logstash/patterns"]
+                        patterns_files_glob => "env-logs-patterns"
+                        match => { "message" => " stopped with ERRORS" }
+                        add_field => { "message_type" => "top_node_stopped_error" }
+                        tag_on_failure => []
+                    }
+                }
+
+                if ![message_type] {
+                    grok {
+                        patterns_dir => ["/etc/logstash/patterns"]
+                        patterns_files_glob => "env-logs-patterns"
+                        match => { "message" => " stopped OK" }
+                        add_field => { "message_type" => "top_node_stopped_ok" }
+                        tag_on_failure => []
+                    }
+                }
+
+                if ![message_type] {
+                    mutate {
+                add_field => { "message_type" => "top_node_started" }
+                    }
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "Ignite ver. %{DATA:[ignite][ver]#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "OS name: %{DATA:[node][os][user]}" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "CPU(s): %{NONNEGINT:[node][cpu][count]:int}" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "Heap: %{DATA:[node][heap][size]}" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "VM name: %{DATA:[node][jvm][name]}" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "Ignite instance name: %{DATA:[node][name]}" }
+                tag_on_failure => []
+            }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "Local node \[ID=%{UUID:[node][id]}, order=%{NONNEGINT:[node][order]:int}, clientMode=%{WORD:[node][client]}\]" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "Local node addresses: \[%{DATA:[node][addrs]}\]" }
+                    tag_on_failure => []
+                }
+
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "Local ports: %{GREEDYDATA:[node][ports]}" }
+                    tag_on_failure => []
+                }
             }
         }
 
@@ -2103,6 +2241,7 @@ filter {
                 match => { "message" => "^Remote Management %{DATA:[node][remote_mgmt]}" }
                 match => { "message" => "^Configured caches %{DATA:[node][cfg][caches]}" }
                 match => { "message" => "^System cache's MemoryPolicy size is configured to %{NONNEGINT:[node][mem][sys_cache_size]:int} MB" }
+                match => { "message" => "^System cache's DataRegion size is configured to %{NONNEGINT:[node][mem][sys_cache_size]:int} MB" }
                 match => { "message" => "^Security status " }
                 match => { "message" => "^Non-loopback local IPs: " }
                 match => { "message" => "^Enabled local MACs: " }
@@ -2138,8 +2277,18 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "BaselineTopology\[id=%{NONNEGINT:[baseline][id]}\]" }
+                match => { "message" => "BaselineTopology\w*\s*\[id=%{NONNEGINT:[baseline][id]}" }
                 add_field => { "message_type" => "top_baseline" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Point in time recovery is enabled" }
+                add_field => { "message_type" => "pitr_enabled" }
                 tag_on_failure => []
             }
         }
@@ -2182,6 +2331,17 @@ filter {
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Caches cleaning utility is started from node: \[%{UUID:[node][id]}," }
                 add_field => { "message_type" => "cache_clean" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Finished indexes rebuilding for cache\: \[name=%{DATA:[cache][name]}, grpName=%{DATA:[cache][group]" }
+                match => { "message" => "^Finished indexes rebuilding" }
+                add_field => { "message_type" => "idx_rebuild_finished" }
                 tag_on_failure => []
             }
         }
@@ -2242,6 +2402,16 @@ filter {
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Finished node ping \[nodeId=%{UUID:[node][id]}, res=%{WORD:[ping][result]}, time=%{NONNEGINT:[ping][time]:int}ms\]" }
                 add_field => { "message_type" => "ping_finished" }
+                tag_on_failure => []
+            }
+        }
+
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^Update status is not available" }
+                add_field => { "message_type" => "upd_status_not_available" }
                 tag_on_failure => []
             }
         }
@@ -2524,13 +2694,24 @@ filter {
             }
         }
 
+        if ![message_type] {
+            grok {
+                patterns_dir => ["/etc/logstash/patterns"]
+                patterns_files_glob => "env-logs-patterns"
+                match => { "message" => "^\s+at\s\w" }
+                match => { "message" => "^Caused by:\s\w" }
+                add_field => { "message_type" => "stack_trace" }
+                tag_on_failure => []
+            }
+        }
+
         # Fix log message type
         if ![message_type] {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Fail" }
-                match => { "message" => "Exception" }
+                match => { "message" => "[Ee]xception" }
                 add_field => { "message_type" => "unknown_failure" }
             tag_on_failure => []
         }
@@ -2565,7 +2746,7 @@ filter {
                 add_field => { "message_type" => "app_pause" }
                 tag_on_failure => []
             }
-		}
+        }
         if ![message_type] {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
@@ -2577,35 +2758,35 @@ filter {
             
             if [message_type] == "gc_pause" {
 
-				grok {
-					patterns_dir => ["/etc/logstash/patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "\[Eden: %{BASE10NUM:[gc][eden][used][1]:int}%{SIZE_M:[gc][eden][used_m][1]}\(%{BASE10NUM:[gc][eden][comm][1]:int}%{SIZE_M:[gc][eden][comm_m][1]}\)->%{BASE10NUM:[gc][eden][used][2]:int}%{SIZE_M:[gc][eden][used_m][2]}\(%{BASE10NUM:[gc][eden][comm][2]:int}%{SIZE_M:[gc][eden][comm_m][2]}\) Survivors: %{BASE10NUM:[gc][surv][1]:int}%{SIZE_M:[gc][surv_m][1]}->%{BASE10NUM:[gc][surv][2]:int}%{SIZE_M:[gc][surv_m][2]} Heap: %{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}\(%{BASE10NUM:[gc][heap][comm][1]:int}%{SIZE_M:[gc][heap][comm_m][1]}\)->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\)\]" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "\[Eden: %{BASE10NUM:[gc][eden][used][1]:int}%{SIZE_M:[gc][eden][used_m][1]}\(%{BASE10NUM:[gc][eden][comm][1]:int}%{SIZE_M:[gc][eden][comm_m][1]}\)->%{BASE10NUM:[gc][eden][used][2]:int}%{SIZE_M:[gc][eden][used_m][2]}\(%{BASE10NUM:[gc][eden][comm][2]:int}%{SIZE_M:[gc][eden][comm_m][2]}\) Survivors: %{BASE10NUM:[gc][surv][1]:int}%{SIZE_M:[gc][surv_m][1]}->%{BASE10NUM:[gc][surv][2]:int}%{SIZE_M:[gc][surv_m][2]} Heap: %{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}\(%{BASE10NUM:[gc][heap][comm][1]:int}%{SIZE_M:[gc][heap][comm_m][1]}\)->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\)\]" }
+                    tag_on_failure => []
+                }
 
-				grok {
-					patterns_dir => ["/etc/logstash/patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "\[Metaspace: %{BASE10NUM:[gc][meta][used][1]:int}%{SIZE_M:[gc][meta][used_m][1]}->%{BASE10NUM:[gc][meta][used][2]:int}%{SIZE_M:[gc][meta][used_m][2]}\(%{BASE10NUM:[gc][meta][comm]:int}%{SIZE_M:[gc][meta][comm_m]}\)\]" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "\[Metaspace: %{BASE10NUM:[gc][meta][used][1]:int}%{SIZE_M:[gc][meta][used_m][1]}->%{BASE10NUM:[gc][meta][used][2]:int}%{SIZE_M:[gc][meta][used_m][2]}\(%{BASE10NUM:[gc][meta][comm]:int}%{SIZE_M:[gc][meta][comm_m]}\)\]" }
+                    tag_on_failure => []
+                }
 
-				grok {
-					patterns_dir => ["/etc/logstash/patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "\[Times: user=%{BASE10NUM:[gc][pause][time][user]:float} sys=%{BASE10NUM:[gc][pause][time][sys]:float}, real=%{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
-					add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "\[Times: user=%{BASE10NUM:[gc][pause][time][user]:float} sys=%{BASE10NUM:[gc][pause][time][sys]:float}, real=%{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
+                    add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
+                    tag_on_failure => []
+                }
 
-				grok {
-					patterns_dir => ["/etc/logstash/patterns"]
-					patterns_files_glob => "env-logs-patterns"
-					match => { "message" => "^\s*%{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\), %{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
-					add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
-					tag_on_failure => []
-				}
+                grok {
+                    patterns_dir => ["/etc/logstash/patterns"]
+                    patterns_files_glob => "env-logs-patterns"
+                    match => { "message" => "^\s*%{BASE10NUM:[gc][heap][used][1]:int}%{SIZE_M:[gc][heap][used_m][1]}->%{BASE10NUM:[gc][heap][used][2]:int}%{SIZE_M:[gc][heap][used_m][2]}\(%{BASE10NUM:[gc][heap][comm][2]:int}%{SIZE_M:[gc][heap][comm_m][2]}\), %{BASE10NUM:[gc][pause][time][real]:float} secs\]" }
+                    add_field => { "[app][pause][total_time]" => "%{[gc][pause][time][real]}" }
+                    tag_on_failure => []
+                }
             
                 # Eden metrics
             
@@ -2936,7 +3117,7 @@ filter {
         grok {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
-            match => { "source" => "(?<grid.host>grid\d+)" }
+            match => { "source" => "%{GRID_HOST:[grid][host]}" }
             remove_tag => [ "grid_host_failure" ]
             tag_on_failure => [ "grid_host_failure" ]
         }
@@ -2953,15 +3134,22 @@ filter {
         }
     }
     
-    # Append prefix for server or client
-    if [grid][host] and ([grid][client] == "false") {
-        mutate {
-            add_field => { "[grid][label]" => "%{[grid][host]} server" }
+    # Set label for the grid host
+    if [grid][host] {
+        if [grid][client] == "false" {
+            mutate {
+                add_field => { "[grid][label]" => "%{[grid][host]} server" }
+            }
         }
-    }
-    if [grid][host] and ([grid][client] == "true") {
-        mutate {
-            add_field => { "[grid][label]" => "%{[grid][host]} client" }
+        else if [grid][client] == "true" {
+            mutate {
+                add_field => { "[grid][label]" => "%{[grid][host]} client" }
+            }
+        }
+        else {
+            mutate {
+                add_field => { "[grid][label]" => "%{[grid][host]}" }
+            }
         }
     }
     
@@ -2995,12 +3183,12 @@ output {
         #    port => 25
         #}
     } else {
-	    elasticsearch {
-	        hosts => [ "{{ hostvars[groups['elk'][0]]['inventory_hostname'] }}:{{ hostvars[groups['elk'][0]]['elastic_port'] }}" ]
-	        template => "/etc/logstash/templates/env-logs-index.json"
-	        template_name => "logstash-*"
-	        template_overwrite => true
-		}
+        elasticsearch {
+            hosts => [ "{{ hostvars[groups['elk'][0]]['inventory_hostname'] }}:{{ hostvars[groups['elk'][0]]['elastic_port'] }}" ]
+            template => "/etc/logstash/templates/env-logs-index.json"
+            template_name => "logstash-*"
+            template_overwrite => true
+        }
     }
     #stdout { codec => rubydebug }
 }
