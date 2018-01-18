@@ -2711,7 +2711,7 @@ filter {
             patterns_dir => ["/etc/logstash/patterns"]
             patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Fail" }
-                match => { "message" => "[Ee]xception" }
+                match => { "message" => "[Ee]xception\b" }
                 add_field => { "message_type" => "unknown_failure" }
             tag_on_failure => []
         }
