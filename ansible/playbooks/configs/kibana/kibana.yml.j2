@@ -2,4 +2,4 @@ elasticsearch.url: "http://{{ hostvars[groups['elk'][0]]['inventory_hostname'] }
 logging.dest: /var/log/kibana/kibana.log
 server.host: 0.0.0.0
 server.port: {{ kibana_port }}
-server.name: {{ host_name }}
+server.name: {{ ansible_hostname }}

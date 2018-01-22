@@ -1,7 +1,6 @@
 # filebeat.yml
 ---
 - hosts: grid
-  user: root
   vars:
     metricbeat: metricbeat-5.5.2-x86_64.rpm
 

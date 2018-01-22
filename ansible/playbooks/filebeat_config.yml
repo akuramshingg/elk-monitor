@@ -1,7 +1,6 @@
 # filebeat_config.yml
 ---
 - hosts: grid
-  user: root
   vars:
     server_app_logs: "{{ groups['server_app_logs'] }}"
     client_app_logs: "{{ groups['client_app_logs'] }}"

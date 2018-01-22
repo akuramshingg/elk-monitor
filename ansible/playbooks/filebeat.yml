@@ -1,7 +1,6 @@
 # filebeat.yml
 ---
 - hosts: grid
-  user: root
   vars:
     filebeat: filebeat-5.5.0-x86_64.rpm
     server_app_logs: "{{ groups['server_app_logs'] }}"

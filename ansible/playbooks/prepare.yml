@@ -1,7 +1,6 @@
 # elasticsearch.yml
 ---
 - hosts: elk
-  user: root
   vars:
     java: jre-8u131-linux-x64.rpm
 

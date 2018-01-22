@@ -1,7 +1,6 @@
 # logstash_config.yml
 ---
 - hosts: elk
-  user: root
 
   tasks:
 

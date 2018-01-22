@@ -1,7 +1,6 @@
 # elasticsearch.yml
 ---
 - hosts: elk
-  user: root
   vars:
     elastic: elasticsearch-5.5.0.rpm
 

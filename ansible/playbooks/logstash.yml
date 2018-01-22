@@ -1,7 +1,6 @@
 # logstash.yml
 ---
 - hosts: elk
-  user: root
   vars:
     logstash: logstash-5.5.0.rpm
 
