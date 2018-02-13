@@ -16,7 +16,7 @@
 #
 # Use a descriptive name for the node:
 #
-node.name: node-ein-desktop
+node.name: elk_server
 #
 # If omitted the node name will default to the machine's host name
 #

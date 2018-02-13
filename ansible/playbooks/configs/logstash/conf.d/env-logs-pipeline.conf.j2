@@ -730,7 +730,7 @@ filter {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
                 match => { "message" => "^Snapshot operation %{DATA:[ss][op][type]} started at %{DATA:[ss][start_date]} \[snapshotId=%{NONNEGINT:[ss][id]:int}," }
-                match => { "message" => "^Snapshot worker started new snapshot operation: GridSnapshotOperationImpl{type=%{DATA:[ss][op][type]}, snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                match => { "message" => "^Snapshot worker started new snapshot operation: GridSnapshotOperationImpl.*?type=%{DATA:[ss][op][type]}, snapshotId=%{NONNEGINT:[ss][id]:int}," }
                 add_field => { "message_type" => "ss_op_started" }
                 tag_on_failure => []
             }
@@ -875,7 +875,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Received snapshot metadata from the cluster: SnapshotInfoImpl{snapshotId=%{NONNEGINT:[ss][id]:int}," }
+                match => { "message" => "^Received snapshot metadata from the cluster: SnapshotInfoImpl.*?snapshotId=%{NONNEGINT:[ss][id]:int}," }
                 add_field => { "message_type" => "ss_meta" }
                 tag_on_failure => []
             }
@@ -1005,7 +1005,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Start snapshot schedule: SnapshotSchedule \[id=%{UUID:[sss][id], name=%{DATA:[sss][name]}," }
+                match => { "message" => "^Start snapshot schedule: SnapshotSchedule \[id=%{UUID:[sss][id]}, name=%{DATA:[sss][name]}," }
                 add_field => { "message_type" => "sss_start" }
                 tag_on_failure => []
             }
@@ -2041,7 +2041,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Started exchange init \[topVer=%{TOP_VER}, crd=%{WORD:[node][crd]}, evt=%{WORD:[evt][type]}, evtNode=%{UUID:[node][id], customEvt=%{WORD:[msg][type]}" }
+                match => { "message" => "^Started exchange init \[topVer=%{TOP_VER}, crd=%{WORD:[node][crd]}, evt=%{WORD:[evt][type]}, evtNode=%{UUID:[node][id]}, customEvt=%{WORD:[msg][type]}" }
                 add_field => { "message_type" => "exch_init_started" }
                 tag_on_failure => []
             }
@@ -2453,7 +2453,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^>>> ver\. %{DATA:[ignite][ver]#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}" }
+                match => { "message" => "^>>> ver\. %{DATA:[ignite][ver]}#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}" }
                 add_field => { "message_type" => "top_node_starting" }
                 tag_on_failure => []
             }
@@ -2506,14 +2506,14 @@ filter {
 
                 if ![message_type] {
                     mutate {
-                add_field => { "message_type" => "top_node_started" }
+                        add_field => { "message_type" => "top_node_started" }
                     }
                 }
 
                 grok {
                     patterns_dir => ["/etc/logstash/patterns"]
                     patterns_files_glob => "env-logs-patterns"
-                    match => { "message" => "Ignite ver. %{DATA:[ignite][ver]#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}" }
+                    match => { "message" => "Ignite ver. %{DATA:[ignite][ver]}#%{DATA:[ignite][date]}-sha1:%{DATA:[ignite][hash]}" }
                     tag_on_failure => []
                 }
 
@@ -2549,8 +2549,8 @@ filter {
                     patterns_dir => ["/etc/logstash/patterns"]
                     patterns_files_glob => "env-logs-patterns"
                     match => { "message" => "Ignite instance name: %{DATA:[node][name]}" }
-                tag_on_failure => []
-            }
+                    tag_on_failure => []
+                }
 
                 grok {
                     patterns_dir => ["/etc/logstash/patterns"]
@@ -2626,7 +2626,7 @@ filter {
                 match => { "message" => "^3-rd party licenses can be found at" }
                 match => { "message" => "^\^-- 2017 Copyright\(C\) GridGain Systems" }
                 match => { "message" => "^Configured plugins:" }
-                match => { "message" => "^\^-- GridGain %{DATA:[gg][ver]#%{DATA:[gg][date]}-sha1:%{DATA:[gg][hash]}" }
+                match => { "message" => "^\^-- GridGain %{DATA:[gg][ver]}#%{DATA:[gg][date]}-sha1:%{DATA:[gg][hash]}" }
                 add_field => { "message_type" => "node_start" }
                 remove_field => [ "level" ]
                 tag_on_failure => []
@@ -2780,7 +2780,7 @@ filter {
             grok {
                 patterns_dir => ["/etc/logstash/patterns"]
                 patterns_files_glob => "env-logs-patterns"
-                match => { "message" => "^Finished indexes rebuilding for cache\: \[name=%{DATA:[cache][name]}, grpName=%{DATA:[cache][group]" }
+                match => { "message" => "^Finished indexes rebuilding for cache\: \[name=%{DATA:[cache][name]}, grpName=%{DATA:[cache][group]}" }
                 match => { "message" => "^Finished indexes rebuilding" }
                 add_field => { "message_type" => "idx_rebuild_finished" }
                 tag_on_failure => []

@@ -17,9 +17,6 @@
   },
   "mappings": {
     "_default_": {
-      "_all": {
-        "enabled": false
-      },
       "dynamic_templates": [
         {
           "message_field": {
@@ -44,12 +41,10 @@
       ],
       "properties": {
         "@timestamp": {
-          "type": "date",
-          "include_in_all": false
+          "type": "date"
         },
         "@version": {
-          "type": "keyword",
-          "include_in_all": false
+          "type": "keyword"
         },
         "aggregate_id" : {
           "type" : "keyword"

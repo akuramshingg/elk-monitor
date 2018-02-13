@@ -1,6 +1,16 @@
 NONNEGINT \b(?:[0-9]+)
+JAVANAME [a-zA-Z$_][a-zA-Z$_0-9]*
+JAVACLASS (?:%{JAVANAME}\.)*%{JAVANAME}
 SIZE_M [BKMG]
 MLGREEDY (.|\r|\n)*
+
+GRID_HOST grid\d+
+DISCO_NODE TcpDiscoveryNode \[id=%{UUID:[node][id]}, addrs=\[.*?\], sockAddrs=\[%{DATA:[node][addr]}\], discPort=%{NONNEGINT:[disco][port]:int}, order=%{NONNEGINT:[node][order]:int}, intOrder=%{NONNEGINT:[node][intOrder]:int}, lastExchangeTime=%{NONNEGINT:[disco][last_exchange_time]:int}, loc=%{WORD:[node][local]}, ver=%{DATA:[node][ver]}, isClient=%{WORD:[node][client]}\]
+TOP_VER (null|AffinityTopologyVersion \[topVer=%{INT:[top][ver]:int}, minorTopVer=%{INT:[top][minor]:int}\])
+FUTURE_TYPE \b%{JAVACLASS}Future\b
+TASK_TYPE \b%{JAVACLASS}Task\b
+JOB_TYPE \b%{JAVACLASS}Job\b
+
 TIMESTAMP_ISO8601_DOTS %{YEAR}\.%{MONTHNUM}\.%{MONTHDAY}[T ]%{HOUR}:?%{MINUTE}(?::?%{SECOND})?%{ISO8601_TIMEZONE}?
 TIMESTAMP_ENV %{MONTHDAY}\.%{MONTHNUM}\.%{YEAR}\s+%{HOUR}:?%{MINUTE}(?::?%{SECOND})?%{ISO8601_TIMEZONE}?
 TIMESTAMP_DSTAT %{MONTHDAY} %{MONTH} %{YEAR} %{TIME}

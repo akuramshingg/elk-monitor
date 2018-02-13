@@ -1,0 +1,173 @@
+filebeat.prospectors:
+
+- input_type: log
+  paths:
+  - D:\docs\GG\FD-5972\20180208-165100\server\*\log\ignite.log
+  
+  encoding: UTF-8
+  harvester_limit: 1000
+
+  fields:
+    message_kind: log
+    grid.group: "FD-5972"
+    grid.client: "false"
+
+  fields_under_root: true
+
+  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?(\\[|\\s+\\[?)(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - D:\docs\GG\FD-5972\20180208-165100\client\server.log
+  
+  encoding: UTF-8
+  harvester_limit: 1000
+
+  fields:
+    message_kind: log
+    grid.group: "FD-5972"
+    grid.client: "true"
+
+  fields_under_root: true
+
+  multiline.pattern: "\\d{2}:\\d{2}:\\d{2}([.,]\\d{3})?(\\[|\\s+\\[?)(ERR|WARN|INFO|DEBUG|TRACE)|^\\s{4,}vmop"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - D:\docs\GG\FD-5972\20180208-165100\server\*\log\envelope-err.log
+  
+  encoding: UTF-8
+  harvester_limit: 1000
+
+  fields:
+    message_kind: log
+    grid.group: "FD-5972"
+    grid.client: "false"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s|^Caused by: "
+  multiline.negate: false
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+
+- input_type: log
+  paths:
+  - D:\not_exists
+  
+  encoding: UTF-8
+  harvester_limit: 1000
+
+  fields:
+    message_kind: log
+    grid.group: "FD-5972"
+    grid.client: "true"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s|^Caused by: "
+  multiline.negate: false
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - D:\not_exists
+
+  harvester_limit: 1000
+
+  fields:
+    message_kind: dstat
+    grid.group: "FD-5972"
+
+  fields_under_root: true
+
+- input_type: log
+  paths:
+  - D:\docs\GG\FD-5972\20180208-165100\server\*\gc*.log*
+
+  harvester_limit: 1000
+
+  fields:
+    message_kind: gc
+    grid.group: "FD-5972"
+    grid.client: "false"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\d"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - D:\docs\GG\FD-5972\20180208-165100\client\gc_clientWF_memory.log.0.current
+
+  harvester_limit: 1000
+
+  fields:
+    message_kind: gc
+    grid.group: "FD-5972"
+    grid.client: "true"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\d"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - D:\not_exists
+
+  harvester_limit: 1000
+
+  fields:
+    message_kind: td
+    grid.group: "FD-5972"
+    grid.client: "false"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s*$"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+- input_type: log
+  paths:
+  - D:\not_exists
+
+  harvester_limit: 1000
+
+  fields:
+    message_kind: td
+    grid.group: "FD-5972"
+    grid.client: "true"
+
+  fields_under_root: true
+
+  multiline.pattern: "^\\s*$"
+  multiline.negate: true
+  multiline.match: after
+  multiline.max_lines: 1000000
+  multiline.timeout: 5m
+
+output.logstash:
+  hosts: ["localhost:5044"]
