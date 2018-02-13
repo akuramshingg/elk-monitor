@@ -1,0 +1,13 @@
+#!/bin/sh
+
+for host_dir in `find * -maxdepth 0 -type d`;
+do
+    echo "Make plain $host_dir"
+
+    for host_file in `find $host_dir -type f`;
+    do
+        mv "$host_file" "${host_file////_}"
+    done
+
+    rm -fr "$host_dir"
+done

@@ -2,6 +2,18 @@
 
 # Usage: <zip_path>
 
-ZF=$1
+ZP=$1
 
-cd `dirname "$ZF"` && unzip `basename "$ZF"` && rm -f `basename "$ZF"`
+ZD=`dirname "$ZP"`
+
+echo "$ZD"
+
+ZF=`basename "$ZP"`
+
+echo "$ZF"
+
+FN="${ZF%.*}"
+
+echo "$FN"
+
+cd "$ZD" && unzip "$ZF" -d "$FN" && rm -f "$ZF"
